@@ -228,13 +228,14 @@ def register_menu_handlers(dp: Dispatcher):
         # Сначала убираем клавиатуру (визуально быстрее)
         await message.answer("Спасибо! Ваш заказ принят.", reply_markup=ReplyKeyboardRemove())
 
-        # Затем отправляем новое сообщение с кнопкой "В главное меню"
-        main_menu_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-        main_menu_keyboard.add('⬅️ В главное меню')
+        # Затем отправляем сообщение о подтверждении заказа
         await message.answer(
             f'Ваш заказ №{order.id} успешно оформлен и передан в обработку!',
-            reply_markup=main_menu_keyboard
+            reply_markup=ReplyKeyboardRemove()
         )
+
+        # Переводим пользователя на начальный этап работы с ботом
+        await start_handler(message, state)
 
     @dp.message_handler(lambda m: m.text == '⬅️ В главное меню')
     async def go_to_main_menu(message: types.Message, state: FSMContext):
