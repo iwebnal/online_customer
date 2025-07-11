@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Скидки - Админ-панель{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="fas fa-percent"></i> Управление скидками</h1>
+            <a href="/admin/discounts/new" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Создать скидку
+            </a>
+        </div>
+    </div>
+</div>
+
+{% if flash_message %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+  {{ flash_message }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-list"></i> Список скидок</h5>
+            </div>
+            <div class="card-body">
+                {% if discounts %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Название</th>
+                                <th>Описание</th>
+                                <th>Период действия</th>
+                                <th>Статус</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for discount in discounts %}
+                            <tr>
+                                <td>{{ discount.id }}</td>
+                                <td>
+                                    <strong>{{ discount.title }}</strong>
+                                </td>
+                                <td>
+                                    {% if discount.description %}
+                                    <small class="text-muted">{{ discount.description[:100] }}...</small>
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if discount.date_start and discount.date_end %}
+                                    <small>
+                                        {{ discount.date_start.strftime('%d.%m.%Y') }} - {{ discount.date_end.strftime('%d.%m.%Y') }}
+                                    </small>
+                                    {% elif discount.date_start %}
+                                    <small>С {{ discount.date_start.strftime('%d.%m.%Y') }}</small>
+                                    {% elif discount.date_end %}
+                                    <small>До {{ discount.date_end.strftime('%d.%m.%Y') }}</small>
+                                    {% else %}
+                                    <small class="text-muted">Без ограничений</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if discount.is_active %}
+                                    <span class="badge bg-success">Активна</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Неактивна</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <form action="{{ url_for('toggle_active_status', discount_id=discount.id) }}" method="post" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                                <i class="fas fa-power-off"></i>
+                                            </button>
+                                        </form>
+                                        <a href="{{ url_for('edit_discount_page', discount_id=discount.id) }}" 
+                                           class="btn btn-sm btn-outline-primary" 
+                                           title="Редактировать">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <form action="{{ url_for('delete_discount', discount_id=discount.id) }}" method="post" class="d-inline" onsubmit="return confirm('Вы уверены, что хотите удалить эту скидку?');">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Удалить">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-percent fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">Скидки не найдены</h5>
+                    <p class="text-muted">Создайте первую скидку, чтобы привлечь клиентов</p>
+                    <a href="/admin/discounts/new" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Создать скидку
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

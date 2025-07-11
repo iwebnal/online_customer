@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}{{ "Редактировать скидку" if discount else "Создать скидку" }}{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">
+    <i class="fas fa-percent"></i>
+    {{ "Редактировать скидку" if discount else "Создать новую скидку" }}
+</h1>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post" action="{% if discount %}/admin/discounts/{{ discount.id }}/edit{% else %}/admin/discounts{% endif %}">
+            <div class="mb-3">
+                <label for="restaurant_id" class="form-label">Ресторан *</label>
+                <select class="form-select" id="restaurant_id" name="restaurant_id" required>
+                    <option value="">Выберите ресторан</option>
+                    {% for restaurant in restaurants %}
+                    <option value="{{ restaurant.id }}" {% if (discount and discount.restaurant_id == restaurant.id) or (not discount and restaurant.id == selected_restaurant_id) %}selected{% endif %}>{{ restaurant.name }} ({{ restaurant.address }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="title" class="form-label">Название</label>
+                <input type="text" class="form-control" id="title" name="title" value="{{ discount.title or '' }}" required>
+            </div>
+            <div class="mb-3">
+                <label for="description" class="form-label">Описание</label>
+                <textarea class="form-control" id="description" name="description" rows="3">{{ discount.description or '' }}</textarea>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="date_start" class="form-label">Дата начала</label>
+                    <input type="datetime-local" class="form-control" id="date_start" name="date_start" value="{{ discount.date_start.strftime('%Y-%m-%dT%H:%M') if discount and discount.date_start }}">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="date_end" class="form-label">Дата окончания</label>
+                    <input type="datetime-local" class="form-control" id="date_end" name="date_end" value="{{ discount.date_end.strftime('%Y-%m-%dT%H:%M') if discount and discount.date_end }}">
+                </div>
+            </div>
+             <div class="mb-3">
+                <label for="category_id" class="form-label">Категория (необязательно)</label>
+                <select class="form-select" id="category_id" name="category_id">
+                    <option value="">Без категории</option>
+                    {% for category in categories %}
+                        <option value="{{ category.id }}" {% if discount and discount.category_id == category.id %}selected{% endif %}>{{ category.name }}</option>
+                    {% endfor %}
+                </select>
+                <div class="form-text">Скидка будет действовать на все товары в этой категории.</div>
+            </div>
+             <div class="mb-3">
+                <label for="product_id" class="form-label">Конкретный товар (необязательно)</label>
+                <select class="form-select" id="product_id" name="product_id">
+                    <option value="">Без товара</option>
+                    {% for product in products %}
+                        <option value="{{ product.id }}" {% if discount and discount.product_id == product.id %}selected{% endif %}>{{ product.name }}</option>
+                    {% endfor %}
+                </select>
+                 <div class="form-text">Скидка будет действовать только на этот товар.</div>
+            </div>
+            
+            <a href="/admin/discounts" class="btn btn-secondary">Отмена</a>
+            <button type="submit" class="btn btn-primary">{{ "Обновить скидку" if discount else "Создать скидку" }}</button>
+        </form>
+    </div>
+</div>
+{% endblock %} 
