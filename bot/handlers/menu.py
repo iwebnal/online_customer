@@ -3,6 +3,7 @@ from aiogram.dispatcher import Dispatcher, FSMContext
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 
+
 from bot.services.db import get_products_by_category_name, get_all_categories, get_all_restaurants, \
     get_products_by_restaurant, get_user_by_telegram_id, create_user, create_order
 from bot.utils.menu import send_main_menu
@@ -16,6 +17,7 @@ CHOOSE_RESTAURANT_BTN = '🏢 Выбрать ресторан'
 MENU_BTN = 'Наше меню'
 
 CONFIRM_ORDER_BTN = '✅ Подтвердить заказ'
+MAIN_MENU_BTN = '⬅️ В главное меню'  # ADDED
 
 choose_restaurant_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 choose_restaurant_keyboard.add(KeyboardButton(CHOOSE_RESTAURANT_BTN))
@@ -206,31 +208,35 @@ def register_menu_handlers(dp: Dispatcher):
         total = data.get('order_total', 0)
         restaurant_id = data.get(RESTAURANT_KEY)
         if not order_items or not restaurant_id:
-            await message.answer('Ошибка: не удалось получить данные заказа. Попробуйте снова.', reply_markup=ReplyKeyboardRemove())
+            await message.answer('Ошибка: не удалось получить данные заказа. Попробуйте снова.',
+                                 reply_markup=ReplyKeyboardRemove())
             return
-        # Получаем или создаём пользователя
+
         telegram_id = str(message.from_user.id)
         user = await get_user_by_telegram_id(telegram_id)
         if not user:
             user = await create_user(telegram_id=telegram_id, name=message.from_user.full_name)
-        # Сохраняем заказ
         order = await create_order(user_id=user.id, restaurant_id=restaurant_id, total=total, items=order_items)
+
         # Очищаем корзину и временные данные заказа
         async with state.proxy() as data:
             data[CART_KEY] = []
             data['order_items'] = []
             data['order_total'] = 0
         await state.update_data(order_items=[], order_total=0)
-        # Удаляем клавиатуру с кнопкой подтверждения заказа из предыдущего сообщения
-        try:
-            await message.bot.edit_message_reply_markup(
-                chat_id=message.chat.id,
-                message_id=message.message_id,
-                reply_markup=None
-            )
-        except Exception:
-            pass  # если не получилось, просто продолжаем
-        # После подтверждения заказа показываем только кнопку 'В главное меню'
+
+        # Сначала убираем клавиатуру (визуально быстрее)
+        await message.answer("Спасибо! Ваш заказ принят.", reply_markup=ReplyKeyboardRemove())
+
+        # Затем отправляем новое сообщение с кнопкой "В главное меню"
         main_menu_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
         main_menu_keyboard.add('⬅️ В главное меню')
-        await message.answer(f'Ваш заказ №{order.id} успешно оформлен и передан в обработку! Спасибо!', reply_markup=main_menu_keyboard)
+        await message.answer(
+            f'Ваш заказ №{order.id} успешно оформлен и передан в обработку!',
+            reply_markup=main_menu_keyboard
+        )
+
+    @dp.message_handler(lambda m: m.text == '⬅️ В главное меню')
+    async def go_to_main_menu(message: types.Message, state: FSMContext):
+        # Здесь вызываем функцию показа главного меню
+        await send_main_menu(message)
