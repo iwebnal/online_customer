@@ -1,6 +1,9 @@
 import os
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy import select
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from db.models import Product, Category, Restaurant, Discount, User, Order, OrderItem
 from sqlalchemy.orm import selectinload
 

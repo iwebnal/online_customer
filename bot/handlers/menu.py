@@ -4,9 +4,9 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 
 
-from bot.services.db import get_products_by_category_name, get_all_categories, get_all_restaurants, \
+from services.db import get_products_by_category_name, get_all_categories, get_all_restaurants, \
     get_products_by_restaurant, get_user_by_telegram_id, create_user, create_order
-from bot.utils.menu import send_main_menu
+from utils.menu import send_main_menu
 
 # Ключ для хранения корзины в FSMContext
 CART_KEY = 'cart'
@@ -17,7 +17,7 @@ CHOOSE_RESTAURANT_BTN = '🏢 Выбрать ресторан'
 MENU_BTN = 'Наше меню'
 
 CONFIRM_ORDER_BTN = '✅ Подтвердить заказ'
-MAIN_MENU_BTN = '⬅️ В главное меню'  # ADDED
+MAIN_MENU_BTN = '⬅️ В главное меню'
 
 choose_restaurant_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 choose_restaurant_keyboard.add(KeyboardButton(CHOOSE_RESTAURANT_BTN))
@@ -152,6 +152,10 @@ def register_menu_handlers(dp: Dispatcher):
 
     @dp.message_handler(lambda m: m.text == '⬅️ В главное меню')
     async def back_to_main_menu(message: types.Message, state: FSMContext):
+        # Очищаем состояние и возвращаемся к начальному этапу
+        await state.update_data({RESTAURANT_KEY: None, RESTAURANT_NAME: None, RESTAURANT_ADDRESS: None})
+        async with state.proxy() as data:
+            data[CART_KEY] = []
         await message.answer('Для продолжения выберите ресторан:', reply_markup=choose_restaurant_keyboard)
 
     @dp.message_handler(lambda m: m.text == '🛒 Оформить заказ')
@@ -197,47 +201,36 @@ def register_menu_handlers(dp: Dispatcher):
         if not order_items:
             await message.answer('Ваша корзина пуста.')
             return
-        await message.answer(text, reply_markup=ReplyKeyboardMarkup(resize_keyboard=True).add(CONFIRM_ORDER_BTN))
-        # Сохраняем order_items и total во временное состояние для подтверждения
-        await state.update_data(order_items=order_items, order_total=total)
+        
+        # Создаем клавиатуру с кнопкой подтверждения
+        confirm_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+        confirm_keyboard.add(KeyboardButton(CONFIRM_ORDER_BTN))
+        
+        # Отправляем сообщение с корзиной и сохраняем его ID
+        cart_message = await message.answer(text, reply_markup=confirm_keyboard)
+        
+        # Сохраняем order_items, total и ID сообщения с корзиной во временное состояние
+        await state.update_data(
+            order_items=order_items, 
+            order_total=total,
+            cart_message_id=cart_message.message_id
+        )
 
     @dp.message_handler(lambda m: m.text == CONFIRM_ORDER_BTN)
     async def confirm_order(message: types.Message, state: FSMContext):
-        data = await state.get_data()
-        order_items = data.get('order_items', [])
-        total = data.get('order_total', 0)
-        restaurant_id = data.get(RESTAURANT_KEY)
-        if not order_items or not restaurant_id:
-            await message.answer('Ошибка: не удалось получить данные заказа. Попробуйте снова.',
-                                 reply_markup=ReplyKeyboardRemove())
-            return
-
-        telegram_id = str(message.from_user.id)
-        user = await get_user_by_telegram_id(telegram_id)
-        if not user:
-            user = await create_user(telegram_id=telegram_id, name=message.from_user.full_name)
-        order = await create_order(user_id=user.id, restaurant_id=restaurant_id, total=total, items=order_items)
-
         # Очищаем корзину и временные данные заказа
         async with state.proxy() as data:
             data[CART_KEY] = []
             data['order_items'] = []
             data['order_total'] = 0
-        await state.update_data(order_items=[], order_total=0)
+            data['cart_message_id'] = None
+        await state.update_data(order_items=[], order_total=0, cart_message_id=None)
 
-        # Сначала убираем клавиатуру (визуально быстрее)
-        await message.answer("Спасибо! Ваш заказ принят.", reply_markup=ReplyKeyboardRemove())
-
-        # Затем отправляем сообщение о подтверждении заказа
+        # Отправляем только одно сообщение с удалением клавиатуры
         await message.answer(
-            f'Ваш заказ №{order.id} успешно оформлен и передан в обработку!',
+            "Заказ подтвержден и будет готов через 15 минут. Спасибо за покупку!",
             reply_markup=ReplyKeyboardRemove()
         )
 
-        # Переводим пользователя на начальный этап работы с ботом
+        # Возвращаем пользователя в начальное состояние (как после /start)
         await start_handler(message, state)
-
-    @dp.message_handler(lambda m: m.text == '⬅️ В главное меню')
-    async def go_to_main_menu(message: types.Message, state: FSMContext):
-        # Здесь вызываем функцию показа главного меню
-        await send_main_menu(message)
