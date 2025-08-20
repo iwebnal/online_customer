@@ -7,9 +7,14 @@ import uvicorn
 from pathlib import Path
 from starlette.middleware.sessions import SessionMiddleware
 import os
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
+from sqlalchemy.orm import joinedload
 
 from admin.routes import products, orders, discounts, restaurants
 from admin.auth import login_user, logout_user, is_authenticated, require_auth
+from admin.database import get_db
+from db.models import Order, User, Restaurant, Product, Discount
 
 load_dotenv()
 
@@ -36,12 +41,46 @@ app.include_router(restaurants.router, prefix="/admin", tags=["restaurants"])
 
 
 @app.get("/", response_class=HTMLResponse)
-async def admin_panel(request: Request):
+async def admin_panel(request: Request, db: AsyncSession = Depends(get_db)):
     # Проверяем авторизацию
     if not is_authenticated(request):
         return RedirectResponse(url="/admin/login", status_code=302)
     
-    return templates.TemplateResponse("index.html", {"request": request})
+    # Получаем последние 3 заказа
+    stmt = select(Order).options(
+        joinedload(Order.user),
+        joinedload(Order.restaurant)
+    ).order_by(Order.created_at.desc()).limit(3)
+    result = await db.execute(stmt)
+    recent_orders = result.scalars().unique().all()
+    
+    # Получаем статистику
+    restaurants_result = await db.execute(select(func.count(Restaurant.id)))
+    restaurants_count = restaurants_result.scalar()
+    
+    products_result = await db.execute(select(func.count(Product.id)))
+    products_count = products_result.scalar()
+    
+    orders_result = await db.execute(select(func.count(Order.id)))
+    orders_count = orders_result.scalar()
+    
+    discounts_result = await db.execute(select(func.count(Discount.id)))
+    discounts_count = discounts_result.scalar()
+    
+    users_result = await db.execute(select(func.count(User.id)))
+    users_count = users_result.scalar()
+    
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "recent_orders": recent_orders,
+        "stats": {
+            "restaurants": restaurants_count,
+            "products": products_count,
+            "orders": orders_count,
+            "discounts": discounts_count,
+            "users": users_count
+        }
+    })
 
 
 @app.get("/admin/login", response_class=HTMLResponse)

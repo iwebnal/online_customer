@@ -30,6 +30,18 @@ async def get_orders(db: AsyncSession = Depends(get_db)):
     return orders
 
 
+@router.get("/api/recent-orders")
+async def get_recent_orders(db: AsyncSession = Depends(get_db)):
+    """Получить последние 3 заказа"""
+    stmt = select(Order).options(
+        joinedload(Order.user),
+        joinedload(Order.restaurant)
+    ).order_by(Order.created_at.desc()).limit(3)
+    result = await db.execute(stmt)
+    orders = result.scalars().unique().all()
+    return orders
+
+
 @router.get("/orders/{order_id}")
 async def get_order_details(order_id: int, db: AsyncSession = Depends(get_db)):
     """Получить заказ по ID"""
