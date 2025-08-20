@@ -13,7 +13,7 @@ CART_KEY = 'cart'
 RESTAURANT_KEY = 'restaurant_id'
 RESTAURANT_NAME = 'restaurant_name'
 RESTAURANT_ADDRESS = 'restaurant_address'
-CHOOSE_RESTAURANT_BTN = '🏢 Выбрать ресторан'
+CHOOSE_RESTAURANT_BTN = '🏢 Выбрать адрес кафе'
 MENU_BTN = 'Наше меню'
 
 CONFIRM_ORDER_BTN = '✅ Подтвердить заказ'
@@ -81,7 +81,7 @@ def register_menu_handlers(dp: Dispatcher):
         keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
         for r in restaurants:
             keyboard.add(f"{r.name} | {r.address}")
-        await message.answer('Пожалуйста, выберите ресторан:', reply_markup=keyboard)
+        await message.answer('Пожалуйста, выберите адрес кафе:', reply_markup=keyboard)
 
     @dp.message_handler(lambda m: '|' in m.text)
     async def select_restaurant(message: types.Message, state: FSMContext):
@@ -92,7 +92,7 @@ def register_menu_handlers(dp: Dispatcher):
                 await state.update_data({RESTAURANT_KEY: r.id, RESTAURANT_NAME: r.name, RESTAURANT_ADDRESS: r.address})
                 await message.answer(f'Вы выбрали ресторан: {r.name}\nАдрес: {r.address}', reply_markup=menu_keyboard)
                 return
-        await message.answer('Ресторан не найден. Пожалуйста, выберите из списка.',
+        await message.answer('Кафе не найдено. Пожалуйста, выберите из списка.',
                              reply_markup=choose_restaurant_keyboard)
 
     @dp.message_handler(lambda m: m.text == MENU_BTN)
@@ -112,7 +112,7 @@ def register_menu_handlers(dp: Dispatcher):
         await message.answer('Выберите категорию:', reply_markup=keyboard)
 
     @dp.message_handler(lambda m: m.text not in [MENU_BTN, '⬅️ В главное меню', '🛒 Оформить заказ', '⬅️ К категориям',
-                                                 CHOOSE_RESTAURANT_BTN] and '|' not in m.text)
+                                                 CHOOSE_RESTAURANT_BTN, CONFIRM_ORDER_BTN] and '|' not in m.text)
     async def show_products_or_add_to_cart(message: types.Message, state: FSMContext):
         data = await state.get_data()
         restaurant_id = data.get(RESTAURANT_KEY)
@@ -141,6 +141,21 @@ def register_menu_handlers(dp: Dispatcher):
         if not restaurant_id:
             await message.answer('Сначала выберите ресторан:', reply_markup=choose_restaurant_keyboard)
             return
+        
+        # Проверяем, находимся ли мы в процессе оформления заказа
+        order_items = data.get('order_items')
+        if order_items:
+            # Если есть order_items, значит пользователь решил не оформлять заказ
+            # и хочет выбрать товары заново - очищаем корзину и временные данные
+            async with state.proxy() as data:
+                data[CART_KEY] = []
+                data['order_items'] = []
+                data['order_total'] = 0
+                data['cart_message_id'] = None
+            await state.update_data(order_items=[], order_total=0, cart_message_id=None)
+            await message.answer('Корзина очищена. Выберите товары заново:')
+        
+        # В любом случае показываем категории
         products = await get_products_by_restaurant(restaurant_id)
         categories = set(p.category.name for p in products if p.category)
         keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
@@ -202,9 +217,10 @@ def register_menu_handlers(dp: Dispatcher):
             await message.answer('Ваша корзина пуста.')
             return
         
-        # Создаем клавиатуру с кнопкой подтверждения
+        # Создаем клавиатуру с кнопкой подтверждения и возврата к категориям
         confirm_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
         confirm_keyboard.add(KeyboardButton(CONFIRM_ORDER_BTN))
+        confirm_keyboard.add(KeyboardButton('⬅️ К категориям'))
         
         # Отправляем сообщение с корзиной и сохраняем его ID
         cart_message = await message.answer(text, reply_markup=confirm_keyboard)
@@ -226,11 +242,11 @@ def register_menu_handlers(dp: Dispatcher):
             data['cart_message_id'] = None
         await state.update_data(order_items=[], order_total=0, cart_message_id=None)
 
-        # Отправляем только одно сообщение с удалением клавиатуры
+        # Отправляем сообщение о подтверждении заказа с удалением клавиатуры
         await message.answer(
             "Заказ подтвержден и будет готов через 15 минут. Спасибо за покупку!",
             reply_markup=ReplyKeyboardRemove()
         )
 
-        # Возвращаем пользователя в начальное состояние (как после /start)
-        await start_handler(message, state)
+        # Переходим к состоянию с кнопкой "Наше меню" (оставляем выбранный ресторан)
+        await message.answer('Что еще хотите заказать?', reply_markup=menu_keyboard)
