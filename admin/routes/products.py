@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from sqlalchemy.orm import joinedload
 from admin.database import get_db
+from admin.auth import is_authenticated
 from db.models import Product, Category, Restaurant
 from typing import Optional
 from pathlib import Path
@@ -20,6 +21,10 @@ templates = Jinja2Templates(directory=TEMPLATES_DIR)
 @router.get("/products", response_class=HTMLResponse)
 async def products_page(request: Request, db: AsyncSession = Depends(get_db)):
     """Страница управления товарами"""
+    # Проверяем авторизацию
+    if not is_authenticated(request):
+        return RedirectResponse(url="/admin/login", status_code=302)
+    
     stmt = select(Product).options(joinedload(Product.category))
     result = await db.execute(stmt)
     products = result.scalars().unique().all()
@@ -36,6 +41,10 @@ async def products_page(request: Request, db: AsyncSession = Depends(get_db)):
 @router.get("/products/new", response_class=HTMLResponse)
 async def new_product_page(request: Request, db: AsyncSession = Depends(get_db)):
     """Страница создания нового товара"""
+    # Проверяем авторизацию
+    if not is_authenticated(request):
+        return RedirectResponse(url="/admin/login", status_code=302)
+    
     result = await db.execute(select(Category))
     categories = result.scalars().all()
     result = await db.execute(select(Restaurant))
@@ -53,6 +62,10 @@ async def new_product_page(request: Request, db: AsyncSession = Depends(get_db))
 @router.get("/products/{product_id}/edit", response_class=HTMLResponse)
 async def edit_product_page(request: Request, product_id: int, db: AsyncSession = Depends(get_db)):
     """Страница редактирования товара"""
+    # Проверяем авторизацию
+    if not is_authenticated(request):
+        return RedirectResponse(url="/admin/login", status_code=302)
+    
     result = await db.execute(select(Product).where(Product.id == product_id))
     product = result.scalar_one_or_none()
     if not product:

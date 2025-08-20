@@ -4,6 +4,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from admin.database import get_db
+from admin.auth import is_authenticated
 from db.models import Restaurant
 from pathlib import Path
 
@@ -13,16 +14,28 @@ templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 @router.get("/restaurants", response_class=HTMLResponse)
 async def list_restaurants(request: Request, db: AsyncSession = Depends(get_db)):
+    # Проверяем авторизацию
+    if not is_authenticated(request):
+        return RedirectResponse(url="/admin/login", status_code=302)
+    
     result = await db.execute(select(Restaurant))
     restaurants = result.scalars().all()
     return templates.TemplateResponse("restaurants.html", {"request": request, "restaurants": restaurants})
 
 @router.get("/restaurants/new", response_class=HTMLResponse)
 async def new_restaurant_page(request: Request):
+    # Проверяем авторизацию
+    if not is_authenticated(request):
+        return RedirectResponse(url="/admin/login", status_code=302)
+    
     return templates.TemplateResponse("restaurant_form.html", {"request": request, "restaurant": None})
 
 @router.post("/restaurants")
 async def create_restaurant(request: Request, name: str = Form(...), address: str = Form(...), db: AsyncSession = Depends(get_db)):
+    # Проверяем авторизацию
+    if not is_authenticated(request):
+        return RedirectResponse(url="/admin/login", status_code=302)
+    
     restaurant = Restaurant(name=name, address=address)
     db.add(restaurant)
     await db.commit()
@@ -31,6 +44,10 @@ async def create_restaurant(request: Request, name: str = Form(...), address: st
 
 @router.get("/restaurants/{restaurant_id}/edit", response_class=HTMLResponse)
 async def edit_restaurant_page(request: Request, restaurant_id: int, db: AsyncSession = Depends(get_db)):
+    # Проверяем авторизацию
+    if not is_authenticated(request):
+        return RedirectResponse(url="/admin/login", status_code=302)
+    
     restaurant = await db.get(Restaurant, restaurant_id)
     if not restaurant:
         raise HTTPException(status_code=404, detail="Restaurant not found")
@@ -38,6 +55,10 @@ async def edit_restaurant_page(request: Request, restaurant_id: int, db: AsyncSe
 
 @router.post("/restaurants/{restaurant_id}/edit")
 async def update_restaurant(request: Request, restaurant_id: int, name: str = Form(...), address: str = Form(...), db: AsyncSession = Depends(get_db)):
+    # Проверяем авторизацию
+    if not is_authenticated(request):
+        return RedirectResponse(url="/admin/login", status_code=302)
+    
     restaurant = await db.get(Restaurant, restaurant_id)
     if not restaurant:
         raise HTTPException(status_code=404, detail="Restaurant not found")
@@ -49,6 +70,10 @@ async def update_restaurant(request: Request, restaurant_id: int, name: str = Fo
 
 @router.post("/restaurants/{restaurant_id}/delete")
 async def delete_restaurant(request: Request, restaurant_id: int, db: AsyncSession = Depends(get_db)):
+    # Проверяем авторизацию
+    if not is_authenticated(request):
+        return RedirectResponse(url="/admin/login", status_code=302)
+    
     restaurant = await db.get(Restaurant, restaurant_id)
     if not restaurant:
         raise HTTPException(status_code=404, detail="Restaurant not found")

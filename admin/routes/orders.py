@@ -6,6 +6,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import joinedload
 
 from admin.database import get_db
+from admin.auth import is_authenticated
 # from database import get_db
 from db.models import Order, User, OrderItem, Product, Restaurant
 from datetime import datetime
@@ -63,6 +64,10 @@ async def update_order_status(
 @router.get("/orders", response_class=HTMLResponse)
 async def orders_page(request: Request, db: AsyncSession = Depends(get_db), restaurant_id: int = None):
     """Страница управления заказами"""
+    # Проверяем авторизацию
+    if not is_authenticated(request):
+        return RedirectResponse(url="/admin/login", status_code=302)
+    
     query = select(Order).options(joinedload(Order.user))
     if restaurant_id:
         query = query.where(Order.restaurant_id == restaurant_id)
@@ -83,6 +88,10 @@ async def orders_page(request: Request, db: AsyncSession = Depends(get_db), rest
 @router.get("/orders/{order_id}", response_class=HTMLResponse)
 async def order_details_page(request: Request, order_id: int, db: AsyncSession = Depends(get_db)):
     """Страница с деталями заказа"""
+    # Проверяем авторизацию
+    if not is_authenticated(request):
+        return RedirectResponse(url="/admin/login", status_code=302)
+    
     stmt = select(Order).options(
         joinedload(Order.user),
         joinedload(Order.items).joinedload(OrderItem.product)

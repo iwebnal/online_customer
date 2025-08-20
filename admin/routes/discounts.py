@@ -6,6 +6,7 @@ from sqlalchemy import select, update, delete
 from sqlalchemy.orm import joinedload
 
 from admin.database import get_db
+from admin.auth import is_authenticated
 # from database import get_db
 from db.models import Discount, Category, Product, Restaurant
 from typing import Optional
@@ -36,6 +37,10 @@ async def get_discounts(db: AsyncSession = Depends(get_db)):
 @router.get("/discounts", response_class=HTMLResponse)
 async def discounts_page(request: Request, db: AsyncSession = Depends(get_db)):
     """Страница управления скидками"""
+    # Проверяем авторизацию
+    if not is_authenticated(request):
+        return RedirectResponse(url="/admin/login", status_code=302)
+    
     stmt = select(Discount).options(
         joinedload(Discount.category),
         joinedload(Discount.product)
@@ -55,6 +60,10 @@ async def discounts_page(request: Request, db: AsyncSession = Depends(get_db)):
 @router.get("/discounts/new", response_class=HTMLResponse)
 async def new_discount_page(request: Request, db: AsyncSession = Depends(get_db)):
     """Страница создания новой скидки"""
+    # Проверяем авторизацию
+    if not is_authenticated(request):
+        return RedirectResponse(url="/admin/login", status_code=302)
+    
     result = await db.execute(select(Category))
     categories = result.scalars().all()
     result = await db.execute(select(Product))
