@@ -234,19 +234,62 @@ def register_menu_handlers(dp: Dispatcher):
 
     @dp.message_handler(lambda m: m.text == CONFIRM_ORDER_BTN)
     async def confirm_order(message: types.Message, state: FSMContext):
-        # Очищаем корзину и временные данные заказа
-        async with state.proxy() as data:
-            data[CART_KEY] = []
-            data['order_items'] = []
-            data['order_total'] = 0
-            data['cart_message_id'] = None
-        await state.update_data(order_items=[], order_total=0, cart_message_id=None)
+        try:
+            # Получаем данные из состояния
+            data = await state.get_data()
+            restaurant_id = data.get(RESTAURANT_KEY)
+            order_items = data.get('order_items', [])
+            order_total = data.get('order_total', 0)
+            
+            if not restaurant_id or not order_items:
+                await message.answer(
+                    "Ошибка: данные заказа не найдены. Попробуйте оформить заказ заново.",
+                    reply_markup=ReplyKeyboardRemove()
+                )
+                return
+            
+            # Получаем или создаем пользователя
+            user = await get_user_by_telegram_id(str(message.from_user.id))
+            if not user:
+                user = await create_user(
+                    telegram_id=str(message.from_user.id),
+                    name=message.from_user.full_name
+                )
+            
+            # Сохраняем заказ в базе данных
+            order = await create_order(
+                user_id=user.id,
+                restaurant_id=restaurant_id,
+                total=order_total,
+                items=order_items
+            )
+            
+            # Очищаем корзину и временные данные заказа
+            async with state.proxy() as data:
+                data[CART_KEY] = []
+                data['order_items'] = []
+                data['order_total'] = 0
+                data['cart_message_id'] = None
+            await state.update_data(order_items=[], order_total=0, cart_message_id=None)
 
-        # Отправляем сообщение о подтверждении заказа с удалением клавиатуры
-        await message.answer(
-            "Заказ подтвержден и будет готов через 15 минут. Спасибо за покупку!",
-            reply_markup=ReplyKeyboardRemove()
-        )
+            # Отправляем сообщение о подтверждении заказа с удалением клавиатуры
+            await message.answer(
+                f"✅ Заказ #{order.id} подтвержден и будет готов через 15 минут!\n"
+                f"💰 Сумма заказа: {order_total}₽\n"
+                f"📞 Мы свяжемся с вами, когда заказ будет готов.\n"
+                f"Спасибо за покупку!",
+                reply_markup=ReplyKeyboardRemove()
+            )
 
-        # Переходим к состоянию с кнопкой "Наше меню" (оставляем выбранный ресторан)
-        await message.answer('Что еще хотите заказать?', reply_markup=menu_keyboard)
+            # Переходим к состоянию с кнопкой "Наше меню" (оставляем выбранный ресторан)
+            await message.answer('Что еще хотите заказать?', reply_markup=menu_keyboard)
+            
+        except Exception as e:
+            print(f"Ошибка при создании заказа: {e}")
+            await message.answer(
+                "Произошла ошибка при оформлении заказа. Пожалуйста, попробуйте еще раз.",
+                reply_markup=ReplyKeyboardRemove()
+            )
+            # Возвращаемся к выбору ресторана в случае ошибки
+            await state.update_data({RESTAURANT_KEY: None, RESTAURANT_NAME: None, RESTAURANT_ADDRESS: None})
+            await message.answer('Для продолжения выберите ресторан:', reply_markup=choose_restaurant_keyboard)
