@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {% if product %}Редактирование товара{% else %}Новый товар{% endif %} - Админ-панель
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="fas fa-{% if product %}edit{% else %}plus{% endif %}"></i>
+                {% if product %}Редактирование товара{% else %}Новый товар{% endif %}
+            </h1>
+            <a href="/admin/products" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Назад к списку
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-info-circle"></i> Информация о товаре</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{% if product %}/admin/products/{{ product.id }}{% else %}/admin/products{% endif %}">
+                    <div class="mb-3">
+                        <label for="restaurant_id" class="form-label">Ресторан *</label>
+                        <select class="form-select" id="restaurant_id" name="restaurant_id" required>
+                            <option value="">Выберите ресторан</option>
+                            {% for restaurant in restaurants %}
+                            <option value="{{ restaurant.id }}" {% if (product and product.restaurant_id == restaurant.id) or (not product and restaurant.id == selected_restaurant_id) %}selected{% endif %}>{{ restaurant.name }} ({{ restaurant.address }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">Название товара *</label>
+                                <input type="text" class="form-control" id="name" name="name" 
+                                       value="{{ product.name if product else '' }}" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="category_id" class="form-label">Категория *</label>
+                                <select class="form-select" id="category_id" name="category_id" required>
+                                    <option value="">Выберите категорию</option>
+                                    {% for category in categories %}
+                                    <option value="{{ category.id }}" 
+                                            {% if product and product.category_id == category.id %}selected{% endif %}>
+                                        {{ category.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Описание</label>
+                        <textarea class="form-control" id="description" name="description" rows="3">{{ product.description if product else '' }}</textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="price" class="form-label">Цена *</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="price" name="price" 
+                                           value="{{ product.price if product else '' }}" step="0.01" min="0" required>
+                                    <span class="input-group-text">₽</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="discount_price" class="form-label">Цена со скидкой</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="discount_price" name="discount_price" 
+                                           value="{{ product.discount_price if product else '' }}" step="0.01" min="0">
+                                    <span class="input-group-text">₽</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="size" class="form-label">Размер/Объем</label>
+                                <input type="text" class="form-control" id="size" name="size" 
+                                       value="{{ product.size if product else '' }}" placeholder="250 мл, 200 г">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="stock" class="form-label">Количество на складе</label>
+                                <input type="number" class="form-control" id="stock" name="stock" 
+                                       value="{{ product.stock if product else 0 }}" min="0">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <div class="form-check mt-4">
+                                    <input class="form-check-input" type="checkbox" id="is_available" name="is_available" 
+                                           {% if not product or product.is_available %}checked{% endif %}>
+                                    <label class="form-check-label" for="is_available">
+                                        Товар доступен для заказа
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="/admin/products" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Отмена
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i>
+                            {% if product %}Сохранить изменения{% else %}Создать товар{% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-lightbulb"></i> Подсказки</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i class="fas fa-info-circle text-primary"></i>
+                        <strong>Название:</strong> Краткое и понятное название товара
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-info-circle text-primary"></i>
+                        <strong>Описание:</strong> Подробное описание товара
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-info-circle text-primary"></i>
+                        <strong>Цена со скидкой:</strong> Оставьте пустым, если скидки нет
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-info-circle text-primary"></i>
+                        <strong>Размер:</strong> Укажите объем, вес или размер порции
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
