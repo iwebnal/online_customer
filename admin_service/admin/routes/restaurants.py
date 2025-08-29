@@ -3,8 +3,8 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from admin.database import get_db
-from admin.auth import is_authenticated
+from admin_service.admin.database import get_db
+from admin_service.admin.auth import is_authenticated
 from db.models import Restaurant
 from pathlib import Path
 

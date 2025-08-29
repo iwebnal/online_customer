@@ -11,8 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import joinedload
 
-from admin.routes import products, orders, discounts, restaurants
-from admin.auth import login_user, logout_user, is_authenticated, require_auth
+from admin_service.admin.routes import products, orders, discounts, restaurants
+from admin_service.admin.auth import login_user, logout_user, is_authenticated, require_auth
 from shared.database import get_db
 from shared.models import Order, User, Restaurant, Product, Discount
 from shared.config import settings

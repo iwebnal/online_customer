@@ -13,11 +13,16 @@ CART_KEY = 'cart'
 RESTAURANT_KEY = 'restaurant_id'
 RESTAURANT_NAME = 'restaurant_name'
 RESTAURANT_ADDRESS = 'restaurant_address'
+START_WORK_BTN = 'Начать работу'
 CHOOSE_RESTAURANT_BTN = '🏢 Выбрать адрес кафе'
 MENU_BTN = 'Наше меню'
 
 CONFIRM_ORDER_BTN = '✅ Подтвердить заказ'
 MAIN_MENU_BTN = '⬅️ В главное меню'
+
+# Клавиатура для новых пользователей
+start_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+start_keyboard.add(KeyboardButton(START_WORK_BTN))
 
 choose_restaurant_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 choose_restaurant_keyboard.add(KeyboardButton(CHOOSE_RESTAURANT_BTN))
@@ -49,8 +54,19 @@ async def get_products_by_category(category_name):
 
 
 def register_menu_handlers(dp: Dispatcher):
+    # Обработчик для новых пользователей - показываем кнопку "Начать работу"
     @dp.message_handler(commands=['start'])
-    async def start_handler(message: types.Message, state: FSMContext):
+    async def start_command_handler(message: types.Message, state: FSMContext):
+        await state.update_data({RESTAURANT_KEY: None, RESTAURANT_NAME: None, RESTAURANT_ADDRESS: None})
+        welcome_text = (
+            'Добро пожаловать! 🎉\n'
+            'Здесь вы можете выбрать и заказать что-то вкусненькое, узнать о скидках и оплатить свой заказ👇'
+        )
+        await message.answer(welcome_text, reply_markup=start_keyboard)
+
+    # Обработчик кнопки "Начать работу"
+    @dp.message_handler(lambda m: m.text == START_WORK_BTN)
+    async def start_work_handler(message: types.Message, state: FSMContext):
         await state.update_data({RESTAURANT_KEY: None, RESTAURANT_NAME: None, RESTAURANT_ADDRESS: None})
         # Сначала отправляем приветствие и акции без клавиатуры
         welcome_text = (
@@ -111,8 +127,23 @@ def register_menu_handlers(dp: Dispatcher):
         keyboard.add('⬅️ В главное меню')
         await message.answer('Выберите категорию:', reply_markup=keyboard)
 
-    @dp.message_handler(lambda m: m.text not in [MENU_BTN, '⬅️ В главное меню', '🛒 Оформить заказ', '⬅️ К категориям',
+    # Обработчик для новых пользователей, которые пишут боту без команды /start
+    @dp.message_handler(lambda m: m.text not in [START_WORK_BTN, MENU_BTN, '⬅️ В главное меню', '🛒 Оформить заказ', '⬅️ К категориям',
                                                  CHOOSE_RESTAURANT_BTN, CONFIRM_ORDER_BTN] and '|' not in m.text)
+    async def handle_new_user_or_products(message: types.Message, state: FSMContext):
+        data = await state.get_data()
+        # Если пользователь еще не начал работу (нет выбранного ресторана), показываем кнопку "Начать работу"
+        if not data.get(RESTAURANT_KEY):
+            await message.answer(
+                'Добро пожаловать! 🎉\n'
+                'Здесь вы можете выбрать и заказать что-то вкусненькое, узнать о скидках и оплатить свой заказ👇',
+                reply_markup=start_keyboard
+            )
+            return
+        
+        # Если ресторан выбран, обрабатываем как выбор продукта
+        await show_products_or_add_to_cart(message, state)
+
     async def show_products_or_add_to_cart(message: types.Message, state: FSMContext):
         data = await state.get_data()
         restaurant_id = data.get(RESTAURANT_KEY)
@@ -171,7 +202,11 @@ def register_menu_handlers(dp: Dispatcher):
         await state.update_data({RESTAURANT_KEY: None, RESTAURANT_NAME: None, RESTAURANT_ADDRESS: None})
         async with state.proxy() as data:
             data[CART_KEY] = []
-        await message.answer('Для продолжения выберите ресторан:', reply_markup=choose_restaurant_keyboard)
+        await message.answer(
+            'Добро пожаловать! 🎉\n'
+            'Здесь вы можете выбрать и заказать что-то вкусненькое, узнать о скидках и оплатить свой заказ👇',
+            reply_markup=start_keyboard
+        )
 
     @dp.message_handler(lambda m: m.text == '🛒 Оформить заказ')
     async def show_cart(message: types.Message, state: FSMContext):
@@ -290,6 +325,10 @@ def register_menu_handlers(dp: Dispatcher):
                 "Произошла ошибка при оформлении заказа. Пожалуйста, попробуйте еще раз.",
                 reply_markup=ReplyKeyboardRemove()
             )
-            # Возвращаемся к выбору ресторана в случае ошибки
+            # Возвращаемся к начальному экрану в случае ошибки
             await state.update_data({RESTAURANT_KEY: None, RESTAURANT_NAME: None, RESTAURANT_ADDRESS: None})
-            await message.answer('Для продолжения выберите ресторан:', reply_markup=choose_restaurant_keyboard)
+            await message.answer(
+                'Добро пожаловать! 🎉\n'
+                'Здесь вы можете выбрать и заказать что-то вкусненькое, узнать о скидках и оплатить свой заказ👇',
+                reply_markup=start_keyboard
+            )

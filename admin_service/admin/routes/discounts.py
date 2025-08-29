@@ -5,8 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from sqlalchemy.orm import joinedload
 
-from admin.database import get_db
-from admin.auth import is_authenticated
+from admin_service.admin.database import get_db
+from admin_service.admin.auth import is_authenticated
 # from database import get_db
 from db.models import Discount, Category, Product, Restaurant
 from typing import Optional
