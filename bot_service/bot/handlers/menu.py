@@ -5,24 +5,20 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemo
 
 
 from services.db import get_products_by_category_name, get_all_categories, get_all_restaurants, \
-    get_products_by_restaurant, get_user_by_telegram_id, create_user, create_order
+    get_products_by_restaurant, get_user_by_telegram_id, create_user, create_order, update_user_phone
 from utils.menu import send_main_menu
+from .states import PhoneRequestStates
 
 # Ключ для хранения корзины в FSMContext
 CART_KEY = 'cart'
 RESTAURANT_KEY = 'restaurant_id'
 RESTAURANT_NAME = 'restaurant_name'
 RESTAURANT_ADDRESS = 'restaurant_address'
-START_WORK_BTN = 'Начать работу'
 CHOOSE_RESTAURANT_BTN = '🏢 Выбрать адрес кафе'
 MENU_BTN = 'Наше меню'
 
 CONFIRM_ORDER_BTN = '✅ Подтвердить заказ'
 MAIN_MENU_BTN = '⬅️ В главное меню'
-
-# Клавиатура для новых пользователей
-start_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-start_keyboard.add(KeyboardButton(START_WORK_BTN))
 
 choose_restaurant_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 choose_restaurant_keyboard.add(KeyboardButton(CHOOSE_RESTAURANT_BTN))
@@ -54,19 +50,8 @@ async def get_products_by_category(category_name):
 
 
 def register_menu_handlers(dp: Dispatcher):
-    # Обработчик для новых пользователей - показываем кнопку "Начать работу"
     @dp.message_handler(commands=['start'])
-    async def start_command_handler(message: types.Message, state: FSMContext):
-        await state.update_data({RESTAURANT_KEY: None, RESTAURANT_NAME: None, RESTAURANT_ADDRESS: None})
-        welcome_text = (
-            'Добро пожаловать! 🎉\n'
-            'Здесь вы можете выбрать и заказать что-то вкусненькое, узнать о скидках и оплатить свой заказ👇'
-        )
-        await message.answer(welcome_text, reply_markup=start_keyboard)
-
-    # Обработчик кнопки "Начать работу"
-    @dp.message_handler(lambda m: m.text == START_WORK_BTN)
-    async def start_work_handler(message: types.Message, state: FSMContext):
+    async def start_handler(message: types.Message, state: FSMContext):
         await state.update_data({RESTAURANT_KEY: None, RESTAURANT_NAME: None, RESTAURANT_ADDRESS: None})
         # Сначала отправляем приветствие и акции без клавиатуры
         welcome_text = (
@@ -127,23 +112,8 @@ def register_menu_handlers(dp: Dispatcher):
         keyboard.add('⬅️ В главное меню')
         await message.answer('Выберите категорию:', reply_markup=keyboard)
 
-    # Обработчик для новых пользователей, которые пишут боту без команды /start
-    @dp.message_handler(lambda m: m.text not in [START_WORK_BTN, MENU_BTN, '⬅️ В главное меню', '🛒 Оформить заказ', '⬅️ К категориям',
+    @dp.message_handler(lambda m: m.text not in [MENU_BTN, '⬅️ В главное меню', '🛒 Оформить заказ', '⬅️ К категориям',
                                                  CHOOSE_RESTAURANT_BTN, CONFIRM_ORDER_BTN] and '|' not in m.text)
-    async def handle_new_user_or_products(message: types.Message, state: FSMContext):
-        data = await state.get_data()
-        # Если пользователь еще не начал работу (нет выбранного ресторана), показываем кнопку "Начать работу"
-        if not data.get(RESTAURANT_KEY):
-            await message.answer(
-                'Добро пожаловать! 🎉\n'
-                'Здесь вы можете выбрать и заказать что-то вкусненькое, узнать о скидках и оплатить свой заказ👇',
-                reply_markup=start_keyboard
-            )
-            return
-        
-        # Если ресторан выбран, обрабатываем как выбор продукта
-        await show_products_or_add_to_cart(message, state)
-
     async def show_products_or_add_to_cart(message: types.Message, state: FSMContext):
         data = await state.get_data()
         restaurant_id = data.get(RESTAURANT_KEY)
@@ -202,11 +172,7 @@ def register_menu_handlers(dp: Dispatcher):
         await state.update_data({RESTAURANT_KEY: None, RESTAURANT_NAME: None, RESTAURANT_ADDRESS: None})
         async with state.proxy() as data:
             data[CART_KEY] = []
-        await message.answer(
-            'Добро пожаловать! 🎉\n'
-            'Здесь вы можете выбрать и заказать что-то вкусненькое, узнать о скидках и оплатить свой заказ👇',
-            reply_markup=start_keyboard
-        )
+        await message.answer('Для продолжения выберите ресторан:', reply_markup=choose_restaurant_keyboard)
 
     @dp.message_handler(lambda m: m.text == '🛒 Оформить заказ')
     async def show_cart(message: types.Message, state: FSMContext):
@@ -291,33 +257,13 @@ def register_menu_handlers(dp: Dispatcher):
                     name=message.from_user.full_name
                 )
             
-            # Сохраняем заказ в базе данных
-            order = await create_order(
-                user_id=user.id,
-                restaurant_id=restaurant_id,
-                total=order_total,
-                items=order_items
-            )
-            
-            # Очищаем корзину и временные данные заказа
-            async with state.proxy() as data:
-                data[CART_KEY] = []
-                data['order_items'] = []
-                data['order_total'] = 0
-                data['cart_message_id'] = None
-            await state.update_data(order_items=[], order_total=0, cart_message_id=None)
-
-            # Отправляем сообщение о подтверждении заказа с удалением клавиатуры
-            await message.answer(
-                f"✅ Заказ #{order.id} подтвержден и будет готов через 15 минут!\n"
-                f"💰 Сумма заказа: {order_total}₽\n"
-                f"📞 Мы свяжемся с вами, когда заказ будет готов.\n"
-                f"Спасибо за покупку!",
-                reply_markup=ReplyKeyboardRemove()
-            )
-
-            # Переходим к состоянию с кнопкой "Наше меню" (оставляем выбранный ресторан)
-            await message.answer('Что еще хотите заказать?', reply_markup=menu_keyboard)
+            # Проверяем, есть ли номер телефона у пользователя
+            if user.phone:
+                # Если номер телефона есть, сразу создаем заказ
+                await create_order_with_phone(message, state, user, restaurant_id, order_items, order_total, user.phone)
+            else:
+                # Если номера телефона нет, запрашиваем его
+                await request_phone_for_order(message, state, user, restaurant_id, order_items, order_total)
             
         except Exception as e:
             print(f"Ошибка при создании заказа: {e}")
@@ -325,10 +271,173 @@ def register_menu_handlers(dp: Dispatcher):
                 "Произошла ошибка при оформлении заказа. Пожалуйста, попробуйте еще раз.",
                 reply_markup=ReplyKeyboardRemove()
             )
-            # Возвращаемся к начальному экрану в случае ошибки
+            # Возвращаемся к выбору ресторана в случае ошибки
             await state.update_data({RESTAURANT_KEY: None, RESTAURANT_NAME: None, RESTAURANT_ADDRESS: None})
+            await message.answer('Для продолжения выберите ресторан:', reply_markup=choose_restaurant_keyboard)
+
+    # Обработчики для FSM состояний
+    @dp.message_handler(content_types=['contact'], state=PhoneRequestStates.waiting_for_phone)
+    async def handle_phone_contact(message: types.Message, state: FSMContext):
+        """Обрабатывает получение номера телефона через кнопку"""
+        if message.contact and message.contact.user_id == message.from_user.id:
+            phone = message.contact.phone_number
+            await process_phone_number(message, state, phone)
+        else:
             await message.answer(
-                'Добро пожаловать! 🎉\n'
-                'Здесь вы можете выбрать и заказать что-то вкусненькое, узнать о скидках и оплатить свой заказ👇',
-                reply_markup=start_keyboard
+                "❌ Пожалуйста, используйте свой собственный номер телефона.",
+                reply_markup=ReplyKeyboardRemove()
             )
+            await state.finish()
+            await message.answer('Для продолжения выберите ресторан:', reply_markup=choose_restaurant_keyboard)
+
+    @dp.message_handler(lambda m: m.text == "✏️ Ввести вручную", state=PhoneRequestStates.waiting_for_phone)
+    async def request_manual_phone_input(message: types.Message, state: FSMContext):
+        """Запрашивает ручной ввод номера телефона"""
+        manual_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+        manual_keyboard.add(KeyboardButton("⬅️ Отменить заказ"))
+        
+        await message.answer(
+            "📱 Пожалуйста, введите ваш номер телефона в формате:\n"
+            "+7XXXXXXXXXX или 8XXXXXXXXXX",
+            reply_markup=manual_keyboard
+        )
+
+    @dp.message_handler(lambda m: m.text == "⬅️ Отменить заказ", state=PhoneRequestStates.waiting_for_phone)
+    async def cancel_order(message: types.Message, state: FSMContext):
+        """Отменяет заказ и возвращает в главное меню"""
+        await state.finish()
+        await state.update_data(
+            cart=[],
+            order_items=[],
+            order_total=0,
+            cart_message_id=None
+        )
+        await message.answer(
+            "❌ Заказ отменен.",
+            reply_markup=ReplyKeyboardRemove()
+        )
+        await message.answer('Для продолжения выберите ресторан:', reply_markup=choose_restaurant_keyboard)
+
+    @dp.message_handler(lambda m: m.text and m.text != "⬅️ Отменить заказ", state=PhoneRequestStates.waiting_for_phone)
+    async def handle_manual_phone(message: types.Message, state: FSMContext):
+        """Обрабатывает ручной ввод номера телефона"""
+        phone = message.text.strip()
+        
+        # Простая валидация номера телефона
+        if len(phone) >= 10 and (phone.startswith('+7') or phone.startswith('8') or phone.startswith('7')):
+            await process_phone_number(message, state, phone)
+        else:
+            await message.answer(
+                "❌ Неверный формат номера телефона.\n"
+                "Пожалуйста, введите номер в формате:\n"
+                "+7XXXXXXXXXX или 8XXXXXXXXXX"
+            )
+
+async def create_order_with_phone(message: types.Message, state: FSMContext, user, restaurant_id, order_items, order_total, phone):
+    """Создает заказ с номером телефона"""
+    try:
+        # Сохраняем заказ в базе данных
+        order = await create_order(
+            user_id=user.id,
+            restaurant_id=restaurant_id,
+            total=order_total,
+            items=order_items,
+            phone=phone
+        )
+        
+        # Очищаем корзину и временные данные заказа
+        await state.update_data(
+            cart=[],
+            order_items=[],
+            order_total=0,
+            cart_message_id=None
+        )
+
+        # Отправляем сообщение о подтверждении заказа с удалением клавиатуры
+        await message.answer(
+            f"✅ Заказ #{order.id} подтвержден и будет готов через 15 минут!\n"
+            f"💰 Сумма заказа: {order_total}₽\n"
+            f"📞 Мы свяжемся с вами по номеру {phone}, когда заказ будет готов.\n"
+            "Спасибо за покупку!",
+            reply_markup=ReplyKeyboardRemove()
+        )
+
+        # Переходим к состоянию с кнопкой "Наше меню" (оставляем выбранный ресторан)
+        await message.answer('Что еще хотите заказать?', reply_markup=menu_keyboard)
+        
+    except Exception as e:
+        print(f"Ошибка при создании заказа: {e}")
+        await message.answer(
+            "Произошла ошибка при оформлении заказа. Пожалуйста, попробуйте еще раз.",
+            reply_markup=ReplyKeyboardRemove()
+        )
+
+async def request_phone_for_order(message: types.Message, state: FSMContext, user, restaurant_id, order_items, order_total):
+    """Запрашивает номер телефона для заказа"""
+    # Сохраняем данные заказа во временное состояние
+    await state.update_data(
+        temp_order_data={
+            'user_id': user.id,
+            'restaurant_id': restaurant_id,
+            'order_items': order_items,
+            'order_total': order_total
+        }
+    )
+    
+    # Создаем клавиатуру для ввода номера телефона
+    phone_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+    phone_keyboard.add(KeyboardButton("📱 Отправить номер телефона", request_contact=True))
+    phone_keyboard.add(KeyboardButton("✏️ Ввести вручную"))
+    phone_keyboard.add(KeyboardButton("⬅️ Отменить заказ"))
+    
+    await message.answer(
+        "📱 Для оформления заказа нам нужен ваш номер телефона.\n"
+        "Вы можете:\n"
+        "• Нажать кнопку 'Отправить номер телефона' (рекомендуется)\n"
+        "• Или ввести номер вручную",
+        reply_markup=phone_keyboard
+    )
+    
+    # Переходим в состояние ожидания номера телефона
+    await PhoneRequestStates.waiting_for_phone.set()
+
+async def process_phone_number(message: types.Message, state: FSMContext, phone: str):
+    """Обрабатывает полученный номер телефона"""
+    try:
+        # Получаем временные данные заказа
+        data = await state.get_data()
+        temp_order_data = data.get('temp_order_data')
+        
+        if not temp_order_data:
+            await message.answer(
+                "❌ Ошибка: данные заказа не найдены. Попробуйте оформить заказ заново.",
+                reply_markup=ReplyKeyboardRemove()
+            )
+            await state.finish()
+            return
+        
+        # Обновляем номер телефона пользователя
+        user = await update_user_phone(str(message.from_user.id), phone)
+        
+        # Создаем заказ с номером телефона
+        await create_order_with_phone(
+            message, 
+            state, 
+            user, 
+            temp_order_data['restaurant_id'],
+            temp_order_data['order_items'],
+            temp_order_data['order_total'],
+            phone
+        )
+        
+        # Завершаем состояние
+        await state.finish()
+        
+    except Exception as e:
+        print(f"Ошибка при обработке номера телефона: {e}")
+        await message.answer(
+            "❌ Произошла ошибка при оформлении заказа. Пожалуйста, попробуйте еще раз.",
+            reply_markup=ReplyKeyboardRemove()
+        )
+        await state.finish()
+        await message.answer('Для продолжения выберите ресторан:', reply_markup=choose_restaurant_keyboard)

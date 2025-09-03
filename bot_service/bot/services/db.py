@@ -60,9 +60,9 @@ async def create_user(telegram_id: str, name: str = None, phone: str = None):
         await session.refresh(user)
         return user
 
-async def create_order(user_id: int, restaurant_id: int, total: float, items: list):
+async def create_order(user_id: int, restaurant_id: int, total: float, items: list, phone: str = None):
     async with get_db_session() as session:
-        order = Order(user_id=user_id, restaurant_id=restaurant_id, total=total, status='new')
+        order = Order(user_id=user_id, restaurant_id=restaurant_id, total=total, status='new', phone=phone)
         session.add(order)
         await session.flush()  # Получить order.id до коммита
         for item in items:
@@ -77,3 +77,15 @@ async def create_order(user_id: int, restaurant_id: int, total: float, items: li
         await session.commit()
         await session.refresh(order)
         return order 
+
+async def update_user_phone(telegram_id: str, phone: str):
+    async with get_db_session() as session:
+        result = await session.execute(
+            select(User).where(User.telegram_id == telegram_id)
+        )
+        user = result.scalar_one_or_none()
+        if user:
+            user.phone = phone
+            await session.commit()
+            await session.refresh(user)
+        return user 

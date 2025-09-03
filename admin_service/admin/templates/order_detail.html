@@ -1,1 +1,369 @@
- 
+{% extends "base.html" %}
+
+{% block title %}Заказ #{{ order.id }} - Админ-панель{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="fas fa-receipt"></i> Заказ #{{ order.id }}
+            </h1>
+            <div>
+                <a href="/admin/orders" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Назад к списку
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Информация о заказе -->
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="fas fa-info-circle"></i> Информация о заказе</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>ID заказа:</strong></td>
+                                <td>#{{ order.id }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Статус:</strong></td>
+                                <td>
+                                    {% if order.status == 'new' %}
+                                        <span class="badge bg-warning fs-6">Новый</span>
+                                    {% elif order.status == 'paid' %}
+                                        <span class="badge bg-success fs-6">Оплачен</span>
+                                    {% elif order.status == 'confirmed' %}
+                                        <span class="badge bg-primary fs-6">Подтвержден</span>
+                                    {% elif order.status == 'cancelled' %}
+                                        <span class="badge bg-danger fs-6">Отменен</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary fs-6">{{ order.status }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Дата создания:</strong></td>
+                                <td>{{ order.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                            </tr>
+                            {% if order.paid_at %}
+                            <tr>
+                                <td><strong>Дата оплаты:</strong></td>
+                                <td>{{ order.paid_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Общая сумма:</strong></td>
+                                <td><span class="h5 text-success">{{ order.total }}₽</span></td>
+                            </tr>
+                            {% if order.phone %}
+                            <tr>
+                                <td><strong>Телефон заказа:</strong></td>
+                                <td><span class="text-success">{{ order.phone }}</span></td>
+                            </tr>
+                            {% elif order.user and order.user.phone %}
+                            <tr>
+                                <td><strong>Телефон заказа:</strong></td>
+                                <td><span class="text-info">{{ order.user.phone }}</span> <small class="text-muted">(из профиля)</small></td>
+                            </tr>
+                            {% endif %}
+                            {% if order.restaurant %}
+                            <tr>
+                                <td><strong>Ресторан:</strong></td>
+                                <td>{{ order.restaurant.name }}</td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Комментарий администратора -->
+                {% if order.admin_comment %}
+                <div class="mt-3">
+                    <h6><i class="fas fa-comment"></i> Комментарий администратора:</h6>
+                    <div class="alert alert-info">
+                        {{ order.admin_comment }}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Товары в заказе -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="fas fa-shopping-basket"></i> Товары в заказе</h5>
+            </div>
+            <div class="card-body">
+                {% if order.items %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Товар</th>
+                                <th>Количество</th>
+                                <th>Цена за единицу</th>
+                                <th>Скидка</th>
+                                <th>Итого</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in order.items %}
+                            <tr>
+                                <td>
+                                    <div>
+                                        <strong>{{ item.product.name }}</strong>
+                                        {% if item.product.description %}
+                                        <br><small class="text-muted">{{ item.product.description[:100] }}{% if item.product.description|length > 100 %}...{% endif %}</small>
+                                        {% endif %}
+                                        {% if item.product.size %}
+                                        <br><small class="text-info">Размер: {{ item.product.size }}</small>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary">{{ item.quantity }}</span>
+                                </td>
+                                <td>
+                                    {% if item.discount_price and item.discount_price < item.price %}
+                                        <span class="text-decoration-line-through text-muted">{{ item.price }}₽</span>
+                                        <br><strong class="text-success">{{ item.discount_price }}₽</strong>
+                                    {% else %}
+                                        <strong>{{ item.price }}₽</strong>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.discount_price and item.discount_price < item.price %}
+                                        <span class="text-success">-{{ ((item.price - item.discount_price) / item.price * 100)|round(1) }}%</span>
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong>
+                                        {% if item.discount_price and item.discount_price < item.price %}
+                                            {{ (item.discount_price * item.quantity)|round(2) }}₽
+                                        {% else %}
+                                            {{ (item.price * item.quantity)|round(2) }}₽
+                                        {% endif %}
+                                    </strong>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-shopping-basket fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">Товары не найдены</h5>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Информация о клиенте и действия -->
+    <div class="col-lg-4">
+        <!-- Информация о клиенте -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="fas fa-user"></i> Информация о клиенте</h5>
+            </div>
+            <div class="card-body">
+                {% if order.user %}
+                <table class="table table-borderless">
+                    <tr>
+                        <td><strong>Имя:</strong></td>
+                        <td>{{ order.user.name or 'Не указано' }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Телефон:</strong></td>
+                        <td>
+                            {% if order.phone %}
+                                <a href="tel:{{ order.phone }}" class="text-decoration-none">
+                                    {{ order.phone }}
+                                </a>
+                                <br><small class="text-success">указан при заказе</small>
+                            {% elif order.user and order.user.phone %}
+                                <a href="tel:{{ order.user.phone }}" class="text-decoration-none">
+                                    {{ order.user.phone }}
+                                </a>
+                                <br><small class="text-info">из профиля</small>
+                            {% else %}
+                                Не указан
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Telegram ID:</strong></td>
+                        <td><code>{{ order.user.telegram_id }}</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Подписка:</strong></td>
+                        <td>
+                            {% if order.user.is_subscribed %}
+                                <span class="badge bg-success">Активна</span>
+                            {% else %}
+                                <span class="badge bg-danger">Неактивна</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Дата регистрации:</strong></td>
+                        <td>{{ order.user.created_at.strftime('%d.%m.%Y') }}</td>
+                    </tr>
+                </table>
+                {% else %}
+                <div class="text-center py-3">
+                    <i class="fas fa-user-slash fa-2x text-muted mb-2"></i>
+                    <p class="text-muted">Информация о клиенте недоступна</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Действия с заказом -->
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-cogs"></i> Действия</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button type="button" 
+                            class="btn btn-outline-warning" 
+                            onclick="updateStatus({{ order.id }}, 'new')"
+                            {% if order.status == 'new' %}disabled{% endif %}>
+                        <i class="fas fa-clock"></i> Новый
+                    </button>
+                    <button type="button" 
+                            class="btn btn-outline-success" 
+                            onclick="updateStatus({{ order.id }}, 'paid')"
+                            {% if order.status == 'paid' %}disabled{% endif %}>
+                        <i class="fas fa-credit-card"></i> Оплачен
+                    </button>
+                    <button type="button" 
+                            class="btn btn-outline-primary" 
+                            onclick="updateStatus({{ order.id }}, 'confirmed')"
+                            {% if order.status == 'confirmed' %}disabled{% endif %}>
+                        <i class="fas fa-check"></i> Подтвержден
+                    </button>
+                    <button type="button" 
+                            class="btn btn-outline-danger" 
+                            onclick="updateStatus({{ order.id }}, 'cancelled')"
+                            {% if order.status == 'cancelled' %}disabled{% endif %}>
+                        <i class="fas fa-times"></i> Отменен
+                    </button>
+                </div>
+                
+                <hr>
+                
+                <div class="d-grid gap-2">
+                    {% if order.user and order.user.phone %}
+                    <a href="tel:{{ order.user.phone }}" class="btn btn-outline-info">
+                        <i class="fas fa-phone"></i> Позвонить клиенту
+                    </a>
+                    {% endif %}
+                    
+                    <button type="button" class="btn btn-outline-secondary" onclick="printOrder()">
+                        <i class="fas fa-print"></i> Печать заказа
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function updateStatus(orderId, status) {
+    if (!confirm(`Изменить статус заказа на "${status}"?`)) {
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('status', status);
+        
+        const response = await fetch(`/admin/orders/${orderId}/status`, {
+            method: 'PUT',
+            body: formData
+        });
+        
+        if (response.ok) {
+            showNotification(`Статус заказа изменен на "${status}"`, 'success');
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            showNotification('Ошибка при изменении статуса', 'danger');
+        }
+    } catch (error) {
+        console.error('Ошибка:', error);
+        showNotification('Ошибка при изменении статуса', 'danger');
+    }
+}
+
+function printOrder() {
+    window.print();
+}
+
+function showNotification(message, type) {
+    // Создаем уведомление
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    // Автоматически скрываем через 5 секунд
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.parentNode.removeChild(alertDiv);
+        }
+    }, 5000);
+}
+
+// Стили для печати
+window.addEventListener('beforeprint', function() {
+    document.title = `Заказ_${order.id}_${new Date().toLocaleDateString()}`;
+});
+
+window.addEventListener('afterprint', function() {
+    document.title = 'Заказ #{{ order.id }} - Админ-панель';
+});
+</script>
+
+<style>
+@media print {
+    .btn, .card-header, nav, .d-flex.justify-content-between {
+        display: none !important;
+    }
+    
+    .card {
+        border: 1px solid #000 !important;
+        box-shadow: none !important;
+    }
+    
+    body {
+        font-size: 12px;
+    }
+    
+    .table {
+        font-size: 11px;
+    }
+}
+</style>
+{% endblock %}

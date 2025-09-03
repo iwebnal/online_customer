@@ -71,6 +71,7 @@ class Order(Base):
     restaurant_id = Column(Integer, ForeignKey('restaurants.id'), nullable=False)
     status = Column(String(32), default='new')  # new, paid, confirmed, cancelled
     total = Column(Float, nullable=False)
+    phone = Column(String(32))  # Номер телефона для заказа
     created_at = Column(DateTime, server_default=func.now())
     paid_at = Column(DateTime)
     admin_comment = Column(Text)

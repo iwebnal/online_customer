@@ -43,6 +43,7 @@
                                 <th>Пользователь</th>
                                 <th>Статус</th>
                                 <th>Сумма</th>
+                                <th>Телефон заказа</th>
                                 <th>Дата создания</th>
                                 <th>Действия</th>
                             </tr>
@@ -76,6 +77,16 @@
                                 </td>
                                 <td>
                                     <strong>{{ order.total }}₽</strong>
+                                </td>
+                                <td>
+                                    {% if order.phone %}
+                                        <span class="text-success">{{ order.phone }}</span>
+                                    {% elif order.user and order.user.phone %}
+                                        <span class="text-info">{{ order.user.phone }}</span>
+                                        <br><small class="text-muted">из профиля</small>
+                                    {% else %}
+                                        <span class="text-muted">Не указан</span>
+                                    {% endif %}
                                 </td>
                                 <td>
                                     <small>{{ order.created_at.strftime('%d.%m.%Y %H:%M') }}</small>

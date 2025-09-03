@@ -10,7 +10,7 @@ import os
 # Добавляем путь к проекту
 sys.path.append(os.path.dirname(__file__))
 
-from bot.services.db import (
+from bot_service.bot.services.db import (
     get_all_restaurants, 
     get_products_by_restaurant, 
     get_user_by_telegram_id, 

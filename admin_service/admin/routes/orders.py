@@ -5,10 +5,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from sqlalchemy.orm import joinedload
 
-from admin_service.admin.database import get_db
+from shared.database import get_db
 from admin_service.admin.auth import is_authenticated
-# from database import get_db
-from db.models import Order, User, OrderItem, Product, Restaurant
+from shared.models import Order, User, OrderItem, Product, Restaurant
 from datetime import datetime
 from typing import List
 from pathlib import Path
@@ -40,36 +39,6 @@ async def get_recent_orders(db: AsyncSession = Depends(get_db)):
     result = await db.execute(stmt)
     orders = result.scalars().unique().all()
     return orders
-
-
-@router.get("/orders/{order_id}")
-async def get_order_details(order_id: int, db: AsyncSession = Depends(get_db)):
-    """Получить заказ по ID"""
-    result = await db.execute(select(Order).where(Order.id == order_id))
-    order = result.scalar_one_or_none()
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
-    return order
-
-
-@router.put("/orders/{order_id}/status")
-async def update_order_status(
-        order_id: int,
-        status: str = Form(...),
-        db: AsyncSession = Depends(get_db)
-):
-    """Обновить статус заказа"""
-    result = await db.execute(select(Order).where(Order.id == order_id))
-    order = result.scalar_one_or_none()
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
-
-    order.status = status
-    if status == "paid":
-        order.paid_at = datetime.now()
-
-    await db.commit()
-    return {"message": f"Статус заказа {order_id} обновлен"}
 
 
 # HTML роуты
@@ -106,16 +75,48 @@ async def order_details_page(request: Request, order_id: int, db: AsyncSession =
     
     stmt = select(Order).options(
         joinedload(Order.user),
+        joinedload(Order.restaurant),
         joinedload(Order.items).joinedload(OrderItem.product)
     ).where(Order.id == order_id)
     
     result = await db.execute(stmt)
-    order = result.scalar_one_or_none()
+    order = result.scalars().unique().first()
     
     if not order:
         raise HTTPException(status_code=404, detail="Заказ не найден")
         
-    return templates.TemplateResponse("order_details.html", {
+    return templates.TemplateResponse("order_detail.html", {
         "request": request,
         "order": order
     })
+
+
+@router.put("/orders/{order_id}/status")
+async def update_order_status(
+        order_id: int,
+        status: str = Form(...),
+        db: AsyncSession = Depends(get_db)
+):
+    """Обновить статус заказа"""
+    result = await db.execute(select(Order).where(Order.id == order_id))
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    order.status = status
+    if status == "paid":
+        order.paid_at = datetime.now()
+
+    await db.commit()
+    return {"message": f"Статус заказа {order_id} обновлен"}
+
+
+# API роуты
+@router.get("/api/orders/{order_id}")
+async def get_order_details(order_id: int, db: AsyncSession = Depends(get_db)):
+    """Получить заказ по ID (API)"""
+    result = await db.execute(select(Order).where(Order.id == order_id))
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return order
