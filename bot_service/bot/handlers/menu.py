@@ -257,13 +257,8 @@ def register_menu_handlers(dp: Dispatcher):
                     name=message.from_user.full_name
                 )
             
-            # Проверяем, есть ли номер телефона у пользователя
-            if user.phone:
-                # Если номер телефона есть, сразу создаем заказ
-                await create_order_with_phone(message, state, user, restaurant_id, order_items, order_total, user.phone)
-            else:
-                # Если номера телефона нет, запрашиваем его
-                await request_phone_for_order(message, state, user, restaurant_id, order_items, order_total)
+            # ВСЕГДА запрашиваем номер телефона перед созданием заказа
+            await request_phone_for_order(message, state, user, restaurant_id, order_items, order_total)
             
         except Exception as e:
             print(f"Ошибка при создании заказа: {e}")
@@ -323,14 +318,38 @@ def register_menu_handlers(dp: Dispatcher):
         """Обрабатывает ручной ввод номера телефона"""
         phone = message.text.strip()
         
-        # Простая валидация номера телефона
-        if len(phone) >= 10 and (phone.startswith('+7') or phone.startswith('8') or phone.startswith('7')):
+        # Улучшенная валидация номера телефона
+        # Убираем все пробелы, скобки, дефисы
+        clean_phone = ''.join(filter(str.isdigit, phone))
+        
+        # Проверяем различные форматы
+        if len(clean_phone) == 11 and clean_phone.startswith('8'):
+            # Формат 8XXXXXXXXXX
+            phone = '+7' + clean_phone[1:]
+        elif len(clean_phone) == 11 and clean_phone.startswith('7'):
+            # Формат 7XXXXXXXXXX
+            phone = '+7' + clean_phone[1:]
+        elif len(clean_phone) == 10:
+            # Формат XXXXXXXXXX (без кода страны)
+            phone = '+7' + clean_phone
+        elif len(clean_phone) == 12 and clean_phone.startswith('7'):
+            # Формат +7XXXXXXXXXX
+            phone = '+' + clean_phone
+        elif len(clean_phone) == 12 and clean_phone.startswith('8'):
+            # Формат +8XXXXXXXXXX (меняем на +7)
+            phone = '+7' + clean_phone[1:]
+        
+        # Финальная проверка
+        if len(phone) == 12 and phone.startswith('+7') and phone[2:].isdigit():
             await process_phone_number(message, state, phone)
         else:
             await message.answer(
                 "❌ Неверный формат номера телефона.\n"
-                "Пожалуйста, введите номер в формате:\n"
-                "+7XXXXXXXXXX или 8XXXXXXXXXX"
+                "Пожалуйста, введите номер в одном из форматов:\n"
+                "• +7XXXXXXXXXX\n"
+                "• 8XXXXXXXXXX\n"
+                "• 7XXXXXXXXXX\n"
+                "• XXXXXXXXXX"
             )
 
 async def create_order_with_phone(message: types.Message, state: FSMContext, user, restaurant_id, order_items, order_total, phone):
@@ -391,7 +410,10 @@ async def request_phone_for_order(message: types.Message, state: FSMContext, use
     phone_keyboard.add(KeyboardButton("⬅️ Отменить заказ"))
     
     await message.answer(
-        "📱 Для оформления заказа нам нужен ваш номер телефона.\n"
+        f"📱 Для подтверждения заказа на сумму {order_total}₽ нам нужен ваш номер телефона.\n\n"
+        "Это необходимо для:\n"
+        "• Связи с вами по готовности заказа\n"
+        "• Подтверждения деталей доставки\n\n"
         "Вы можете:\n"
         "• Нажать кнопку 'Отправить номер телефона' (рекомендуется)\n"
         "• Или ввести номер вручную",
