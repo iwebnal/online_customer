@@ -1,0 +1,22 @@
+[
+  { "id": 1, "name": "Американо", "price": 150, "description": "Кофе 250 мл", "category": "drinks", "addressId": "a1" },
+  { "id": 2, "name": "Капучино", "price": 210, "description": "Кофе с молоком 300 мл", "category": "drinks", "addressId": "a1" },
+  { "id": 3, "name": "Латте", "price": 230, "description": "Нежный латте 300 мл", "category": "drinks", "addressId": "a1" },
+  { "id": 4, "name": "Круассан", "price": 180, "description": "Сливочный, свежая выпечка", "category": "desserts", "addressId": "a2" },
+  { "id": 5, "name": "Чизкейк", "price": 260, "description": "Классический Нью-Йорк", "category": "desserts", "addressId": "a2" },
+  { "id": 6, "name": "Американо1", "price": 150, "description": "Кофе 250 мл", "category": "drinks", "addressId": "a2" },
+  { "id": 7, "name": "Капучино1", "price": 210, "description": "Кофе с молоком 300 мл", "category": "drinks", "addressId": "a3" },
+  { "id": 8, "name": "Латте1", "price": 230, "description": "Нежный латте 300 мл", "category": "drinks", "addressId": "a3" },
+  { "id": 9, "name": "Круассан1", "price": 180, "description": "Сливочный, свежая выпечка", "category": "desserts", "addressId": "a3" },
+  { "id": 10, "name": "Чизкейк1", "price": 260, "description": "Классический Нью-Йорк", "category": "desserts", "addressId": "a1" },
+  { "id": 11, "name": "Американо2", "price": 150, "description": "Кофе 250 мл", "category": "drinks", "addressId": "a1" },
+  { "id": 12, "name": "Капучино2", "price": 210, "description": "Кофе с молоком 300 мл", "category": "drinks", "addressId": "a1" },
+  { "id": 13, "name": "Латте2", "price": 230, "description": "Нежный латте 300 мл", "category": "drinks", "addressId": "a2" },
+  { "id": 14, "name": "Круассан2", "price": 180, "description": "Сливочный, свежая выпечка", "category": "desserts", "addressId": "a2" },
+  { "id": 15, "name": "Чизкейк2", "price": 260, "description": "Классический Нью-Йорк", "category": "desserts", "addressId": "a2" },
+  { "id": 16, "name": "Американо3", "price": 150, "description": "Кофе 250 мл", "category": "drinks", "addressId": "a3" },
+  { "id": 17, "name": "Капучино3", "price": 210, "description": "Кофе с молоком 300 мл", "category": "drinks", "addressId": "a3" },
+  { "id": 18, "name": "Латте3", "price": 230, "description": "Нежный латте 300 мл", "category": "drinks", "addressId": "a3" },
+  { "id": 19, "name": "Круассан3", "price": 180, "description": "Сливочный, свежая выпечка", "category": "desserts", "addressId": "a3" },
+  { "id": 20, "name": "Чизкейк3", "price": 260, "description": "Классический Нью-Йорк", "category": "desserts", "addressId": "a3" }
+]

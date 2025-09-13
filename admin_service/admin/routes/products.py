@@ -4,9 +4,12 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from sqlalchemy.orm import joinedload
-from admin_service.admin.database import get_db
+from shared.database import get_db
 from admin_service.admin.auth import is_authenticated
-from db.models import Product, Category, Restaurant
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from shared.models import Product, Category, Restaurant
 from typing import Optional
 from pathlib import Path
 

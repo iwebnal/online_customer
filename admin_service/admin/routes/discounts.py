@@ -5,10 +5,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from sqlalchemy.orm import joinedload
 
-from admin_service.admin.database import get_db
+from shared.database import get_db
 from admin_service.admin.auth import is_authenticated
-# from database import get_db
-from db.models import Discount, Category, Product, Restaurant
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from shared.models import Discount, Category, Product, Restaurant
 from typing import Optional
 from datetime import datetime
 from pathlib import Path

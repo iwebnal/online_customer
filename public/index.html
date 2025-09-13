@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Кафе — Telegram Mini App</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="./styles.css?v=20250912" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand">
+        <span class="logo">☕️</span>
+        <div>
+          <h1 id="cafe-name">You Coffee (Nalchik)</h1>
+          <p class="tagline">Свежий кофе и выпечка рядом с вами</p>
+          <nav class="brand-menu" aria-label="Категории меню">
+            <ul class="brand-menu__list">
+              <li class="brand-menu__item"><button type="button" class="chip" data-category="all">Все</button></li>
+              <li class="brand-menu__item"><button type="button" class="chip" data-category="drinks">Напитки</button></li>
+              <li class="brand-menu__item"><button type="button" class="chip" data-category="breakfast">Завтраки</button></li>
+              <li class="brand-menu__item"><button type="button" class="chip" data-category="lunch">Ланчи</button></li>
+              <li class="brand-menu__item"><button type="button" class="chip" data-category="salads">Салаты</button></li>
+              <li class="brand-menu__item"><button type="button" class="chip" data-category="sandwiches">Сэндвичи</button></li>
+              <li class="brand-menu__item"><button type="button" class="chip" data-category="desserts">Десерты</button></li>
+              <li class="brand-menu__item"><button type="button" class="chip" data-category="snacks">Снеки</button></li>
+              <li class="brand-menu__item"><button type="button" class="chip" data-category="addons">Добавки</button></li>
+              <li class="brand-menu__item"><button type="button" class="chip" data-category="merch">Мерч</button></li>
+            </ul>
+          </nav>
+        </div>
+      </div>
+      <!-- <div class="theme-indicator" id="theme-indicator" title="Тема"></div> -->
+    </header>
+
+    <main>
+      <!-- <section class="notice" id="tg-notice" hidden>
+        Это превью вне Telegram. Некоторые функции (кнопка оплаты, тема) недоступны.
+      </section> -->
+
+      <section class="info">
+        <div class="info-card">
+          <h2>Сегодня</h2>
+          <p id="today-hours">Пн–Пт: 8:00–20:00 · Сб–Вс: 9:00–18:00</p>
+        </div>
+        <div class="info-card">
+          <h2>Адрес</h2>
+          <div class="address">
+            <div class="address__selected">
+              <span id="selected-address">г. Примерск, ул. Кофейная, 5</span>
+              <button id="toggle-addresses" class="btn btn-secondary btn-icon" aria-expanded="false" aria-controls="address-list" title="Показать адреса">▾</button>
+            </div>
+            <ul id="address-list" class="address__list" hidden></ul>
+            <a id="map-link" href="#" target="_blank" rel="noopener">Открыть карту</a>
+          </div>
+        </div>
+        <div class="info-card">
+          <h2>Контакты</h2>
+          <p>
+            <a href="tel:+79999999999">+7 (999) 999‑99‑99</a><br />
+            <a href="mailto:cafe@example.com">cafe@example.com</a>
+          </p>
+        </div>
+      </section>
+
+      <section class="menu">
+        <h2>Меню</h2>
+        <div id="menu-grid" class="menu-grid" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <span id="cart-summary">Корзина пуста</span>
+    </footer>
+
+    <section class="order" id="order-panel" hidden>
+      <div class="order-card">
+        <h2>Ваш заказ</h2>
+        <div class="order__addr">Адрес: <span id="order-address"></span></div>
+        <div id="order-list"></div>
+        <div class="order__total"><span>Итого:</span><strong id="order-total">0 ₽</strong></div>
+        <div class="order__actions">
+          <button id="continue" class="btn btn-secondary">Продолжить выбор</button>
+          <button id="confirm-order" class="btn btn-primary">Отправить</button>
+        </div>
+      </div>
+    </section>
+
+    <script src="./app.js?v=20250912"></script>
+  </body>
+  </html>
