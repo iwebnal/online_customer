@@ -81,7 +81,12 @@
                             {% if order.restaurant %}
                             <tr>
                                 <td><strong>Ресторан:</strong></td>
-                                <td>{{ order.restaurant.name }}</td>
+                                <td>
+                                    <div>
+                                        <strong>{{ order.restaurant.name }}</strong>
+                                        <br><small class="text-muted">{{ order.restaurant.address }}</small>
+                                    </div>
+                                </td>
                             </tr>
                             {% endif %}
                         </table>

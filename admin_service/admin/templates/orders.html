@@ -41,6 +41,7 @@
                             <tr>
                                 <th>ID</th>
                                 <th>Пользователь</th>
+                                <th>Ресторан</th>
                                 <th>Статус</th>
                                 <th>Сумма</th>
                                 <th>Телефон заказа</th>
@@ -61,6 +62,16 @@
                                         <br><small class="text-muted">{{ order.user.phone }}</small>
                                         {% endif %}
                                     </div>
+                                </td>
+                                <td>
+                                    {% if order.restaurant %}
+                                        <div>
+                                            <strong>{{ order.restaurant.name }}</strong>
+                                            <br><small class="text-muted">{{ order.restaurant.address }}</small>
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted">Не указан</span>
+                                    {% endif %}
                                 </td>
                                 <td>
                                     {% if order.status == 'new' %}

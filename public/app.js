@@ -417,11 +417,21 @@
     });
     var selAddr = getSelectedAddress();
     
+    // Извлекаем ID ресторана из выбранного адреса
+    var restaurantId = null;
+    if (selAddr && selAddr.id) {
+      var match = selAddr.id.match(/restaurant_(\d+)/);
+      if (match) {
+        restaurantId = parseInt(match[1]);
+      }
+    }
+    
     // Формируем данные заказа для отправки на сервер
     var orderData = {
       order: order,
       totalSum: totalSum,
       address: selAddr ? selAddr.label : 'Не указан',
+      restaurant_id: restaurantId, // Добавляем ID ресторана
       timestamp: new Date().toISOString(),
       user: null
     };

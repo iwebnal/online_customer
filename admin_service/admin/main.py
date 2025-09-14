@@ -215,10 +215,18 @@ async def create_order_api(order_data: dict, db: AsyncSession = Depends(get_db))
                 db.add(user)
                 await db.flush()
         
-        # Получаем первый доступный ресторан
-        stmt = select(Restaurant).order_by(Restaurant.id)
-        result = await db.execute(stmt)
-        restaurant = result.scalars().first()
+        # Получаем ресторан по переданному ID или первый доступный
+        restaurant = None
+        if order_data.get("restaurant_id"):
+            stmt = select(Restaurant).where(Restaurant.id == order_data["restaurant_id"])
+            result = await db.execute(stmt)
+            restaurant = result.scalar_one_or_none()
+        
+        # Если ресторан не найден по ID, берем первый доступный
+        if not restaurant:
+            stmt = select(Restaurant).order_by(Restaurant.id)
+            result = await db.execute(stmt)
+            restaurant = result.scalars().first()
         
         if not restaurant:
             return {
@@ -229,7 +237,7 @@ async def create_order_api(order_data: dict, db: AsyncSession = Depends(get_db))
         # Создаем заказ
         order = Order(
             user_id=user.id if user else None,
-            restaurant_id=restaurant.id,  # Используем первый доступный ресторан
+            restaurant_id=restaurant.id,  # Используем выбранный или первый доступный ресторан
             status="new",
             total=order_data.get("totalSum", 0),
             phone=order_data.get("phone", "")

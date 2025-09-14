@@ -23,7 +23,10 @@ templates = Jinja2Templates(directory=TEMPLATES_DIR)
 @router.get("/api/orders")
 async def get_orders(db: AsyncSession = Depends(get_db)):
     """Получить список всех заказов"""
-    stmt = select(Order).options(joinedload(Order.user)).order_by(Order.created_at.desc())
+    stmt = select(Order).options(
+        joinedload(Order.user),
+        joinedload(Order.restaurant)
+    ).order_by(Order.created_at.desc())
     result = await db.execute(stmt)
     orders = result.scalars().unique().all()
     return orders
@@ -49,7 +52,10 @@ async def orders_page(request: Request, db: AsyncSession = Depends(get_db), rest
     if not is_authenticated(request):
         return RedirectResponse(url="/admin/login", status_code=302)
     
-    query = select(Order).options(joinedload(Order.user))
+    query = select(Order).options(
+        joinedload(Order.user),
+        joinedload(Order.restaurant)
+    )
     if restaurant_id:
         query = query.where(Order.restaurant_id == restaurant_id)
     result = await db.execute(query)
