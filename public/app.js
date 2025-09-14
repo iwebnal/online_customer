@@ -172,7 +172,10 @@
     if (toggleBtn) { toggleBtn.setAttribute('aria-expanded', 'false'); toggleBtn.classList.remove('rotated'); }
     // Clear cart to avoid mixing items from different addresses
     state.cart = new Map();
+    // Сбрасываем активную категорию при смене ресторана
+    state.activeCategory = null;
     renderAddresses();
+    renderCategories(); // Обновляем категории для нового ресторана
     renderMenu();
     updateOrderPanel();
     updateCartSummary();
@@ -192,8 +195,29 @@
       categoryList.appendChild(allItem);
     }
     
-    // Добавляем категории из API
-    state.categories.forEach(function (category) {
+    // Получаем ID выбранного ресторана
+    var selectedAddress = getSelectedAddress();
+    var selectedRestaurantId = null;
+    
+    if (selectedAddress && selectedAddress.id) {
+      // Извлекаем ID ресторана из addressId (формат: restaurant_ID)
+      var match = selectedAddress.id.match(/restaurant_(\d+)/);
+      if (match) {
+        selectedRestaurantId = parseInt(match[1]);
+      }
+    }
+    
+    // Фильтруем категории по выбранному ресторану
+    var filteredCategories = state.categories.filter(function (category) {
+      // Если ресторан не выбран или у категории нет restaurant_id, показываем все
+      if (!selectedRestaurantId || !category.restaurant_id) {
+        return true;
+      }
+      return category.restaurant_id === selectedRestaurantId;
+    });
+    
+    // Добавляем отфильтрованные категории
+    filteredCategories.forEach(function (category) {
       var li = document.createElement('li');
       li.className = 'brand-menu__item';
       
@@ -217,11 +241,35 @@
     grid.innerHTML = '';
     var selAddr = getSelectedAddress();
     var selId = selAddr ? selAddr.id : null;
+    
+    // Получаем ID выбранного ресторана
+    var selectedRestaurantId = null;
+    if (selAddr && selAddr.id) {
+      var match = selAddr.id.match(/restaurant_(\d+)/);
+      if (match) {
+        selectedRestaurantId = parseInt(match[1]);
+      }
+    }
+    
     var items = state.menu.filter(function (i) {
+      // Фильтрация по категории
       var okCat = !state.activeCategory || i.category === state.activeCategory;
-      var okAddr = !selId || !i.addressId || i.addressId === selId; // show everywhere if no addressId
-      return okCat && okAddr;
+      
+      // Фильтрация по ресторану
+      var okRestaurant = true;
+      if (selectedRestaurantId && i.restaurant_id) {
+        okRestaurant = i.restaurant_id === selectedRestaurantId;
+      } else if (selectedRestaurantId && !i.restaurant_id) {
+        // Если у товара нет restaurant_id, но ресторан выбран, используем старую логику addressId
+        okRestaurant = !i.addressId || i.addressId === selId;
+      } else if (!selectedRestaurantId) {
+        // Если ресторан не выбран, показываем все товары
+        okRestaurant = true;
+      }
+      
+      return okCat && okRestaurant;
     });
+    
     if (!items || !items.length) {
       var empty = document.createElement('div');
       empty.className = 'menu-empty';
