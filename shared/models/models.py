@@ -28,7 +28,7 @@ class Category(Base):
     __tablename__ = 'categories'
     id = Column(Integer, primary_key=True)
     name = Column(String(64), nullable=False)
-    restaurant_id = Column(Integer, ForeignKey('restaurants.id'), nullable=False)
+    restaurant_id = Column(Integer, ForeignKey('restaurants.id'), nullable=True)
     products = relationship('Product', back_populates='category')
     restaurant = relationship('Restaurant', back_populates='categories')
 
@@ -38,7 +38,7 @@ class Product(Base):
     name = Column(String(128), nullable=False)
     description = Column(Text)
     category_id = Column(Integer, ForeignKey('categories.id'))
-    restaurant_id = Column(Integer, ForeignKey('restaurants.id'), nullable=False)
+    restaurant_id = Column(Integer, ForeignKey('restaurants.id'), nullable=True)
     price = Column(Float, nullable=False)
     discount_price = Column(Float)
     size = Column(String(32))
@@ -59,7 +59,7 @@ class Discount(Base):
     is_active = Column(Boolean, default=True)
     category_id = Column(Integer, ForeignKey('categories.id'), nullable=True)
     product_id = Column(Integer, ForeignKey('products.id'), nullable=True)
-    restaurant_id = Column(Integer, ForeignKey('restaurants.id'), nullable=False)
+    restaurant_id = Column(Integer, ForeignKey('restaurants.id'), nullable=True)
     category = relationship('Category')
     product = relationship('Product')
     restaurant = relationship('Restaurant', back_populates='discounts')
@@ -68,7 +68,7 @@ class Order(Base):
     __tablename__ = 'orders'
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'))
-    restaurant_id = Column(Integer, ForeignKey('restaurants.id'), nullable=False)
+    restaurant_id = Column(Integer, ForeignKey('restaurants.id'), nullable=True)
     status = Column(String(32), default='new')  # new, paid, confirmed, cancelled
     total = Column(Float, nullable=False)
     phone = Column(String(32))  # Номер телефона для заказа

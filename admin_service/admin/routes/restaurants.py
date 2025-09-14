@@ -2,13 +2,13 @@ from fastapi import APIRouter, Request, Depends, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, delete, update
 from shared.database import get_db
 from admin_service.admin.auth import is_authenticated
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-from shared.models import Restaurant
+from shared.models import Restaurant, Category, Product, Order, Discount
 from pathlib import Path
 
 router = APIRouter()
@@ -21,7 +21,7 @@ async def list_restaurants(request: Request, db: AsyncSession = Depends(get_db))
     if not is_authenticated(request):
         return RedirectResponse(url="/admin/login", status_code=302)
     
-    result = await db.execute(select(Restaurant))
+    result = await db.execute(select(Restaurant).order_by(Restaurant.name))
     restaurants = result.scalars().all()
     return templates.TemplateResponse("restaurants.html", {"request": request, "restaurants": restaurants})
 
@@ -80,7 +80,29 @@ async def delete_restaurant(request: Request, restaurant_id: int, db: AsyncSessi
     restaurant = await db.get(Restaurant, restaurant_id)
     if not restaurant:
         raise HTTPException(status_code=404, detail="Restaurant not found")
-    await db.delete(restaurant)
-    await db.commit()
-    request.session["flash"] = "Ресторан успешно удален!"
+    
+    try:
+        # Обнуляем restaurant_id во всех связанных записях
+        # Обнуляем restaurant_id в заказах
+        await db.execute(update(Order).where(Order.restaurant_id == restaurant_id).values(restaurant_id=None))
+        
+        # Обнуляем restaurant_id в продуктах
+        await db.execute(update(Product).where(Product.restaurant_id == restaurant_id).values(restaurant_id=None))
+        
+        # Обнуляем restaurant_id в категориях
+        await db.execute(update(Category).where(Category.restaurant_id == restaurant_id).values(restaurant_id=None))
+        
+        # Обнуляем restaurant_id в скидках
+        await db.execute(update(Discount).where(Discount.restaurant_id == restaurant_id).values(restaurant_id=None))
+        
+        # Теперь удаляем сам ресторан
+        await db.execute(delete(Restaurant).where(Restaurant.id == restaurant_id))
+        
+        await db.commit()
+        request.session["flash"] = "Ресторан успешно удален! Связанные записи сохранены с пустым полем ресторана."
+        
+    except Exception as e:
+        await db.rollback()
+        request.session["flash"] = f"Ошибка при удалении ресторана: {str(e)}"
+    
     return RedirectResponse(url="/admin/restaurants", status_code=303) 

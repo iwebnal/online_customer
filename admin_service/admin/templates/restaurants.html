@@ -32,7 +32,7 @@
             <td>{{ restaurant.address }}</td>
             <td>
                 <a href="/admin/restaurants/{{ restaurant.id }}/edit" class="btn btn-sm btn-outline-primary">Редактировать</a>
-                <form action="/admin/restaurants/{{ restaurant.id }}/delete" method="post" style="display:inline-block" onsubmit="return confirm('Удалить ресторан?');">
+                <form action="/admin/restaurants/{{ restaurant.id }}/delete" method="post" style="display:inline-block" onsubmit="return confirm('ВНИМАНИЕ! При удалении ресторана поле ресторана в связанных записях (категории, продукты, заказы, скидки) будет обнулено. Продолжить?');">
                     <button type="submit" class="btn btn-sm btn-outline-danger">Удалить</button>
                 </form>
             </td>

@@ -128,7 +128,7 @@ async def logout(request: Request):
 @app.get("/api/restaurants")
 async def get_restaurants_api(db: AsyncSession = Depends(get_db)):
     """Получить список всех ресторанов для Mini App"""
-    stmt = select(Restaurant)
+    stmt = select(Restaurant).order_by(Restaurant.name)
     result = await db.execute(stmt)
     restaurants = result.scalars().all()
     
@@ -215,10 +215,21 @@ async def create_order_api(order_data: dict, db: AsyncSession = Depends(get_db))
                 db.add(user)
                 await db.flush()
         
+        # Получаем первый доступный ресторан
+        stmt = select(Restaurant).order_by(Restaurant.id)
+        result = await db.execute(stmt)
+        restaurant = result.scalars().first()
+        
+        if not restaurant:
+            return {
+                "status": "error",
+                "message": "Нет доступных ресторанов в системе"
+            }
+        
         # Создаем заказ
         order = Order(
             user_id=user.id if user else None,
-            restaurant_id=1,  # По умолчанию первый ресторан
+            restaurant_id=restaurant.id,  # Используем первый доступный ресторан
             status="new",
             total=order_data.get("totalSum", 0),
             phone=order_data.get("phone", "")
