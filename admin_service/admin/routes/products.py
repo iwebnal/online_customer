@@ -115,6 +115,9 @@ async def create_product(
         category_id: int = Form(...),
         restaurant_id: int = Form(...),
         size: Optional[str] = Form(None),
+        stock: int = Form(0),
+        is_available: bool = Form(True),
+        discount_price: Optional[float] = Form(None),
         db: AsyncSession = Depends(get_db)
 ):
     """Создать новый товар"""
@@ -125,8 +128,9 @@ async def create_product(
         category_id=category_id,
         restaurant_id=restaurant_id,
         size=size,
-        is_available=True,
-        stock=0
+        is_available=is_available,
+        stock=stock,
+        discount_price=discount_price
     )
     db.add(product)
     await db.commit()
@@ -146,6 +150,9 @@ async def update_product(
         category_id: int = Form(...),
         restaurant_id: int = Form(...),
         size: Optional[str] = Form(None),
+        stock: int = Form(0),
+        is_available: bool = Form(True),
+        discount_price: Optional[float] = Form(None),
         db: AsyncSession = Depends(get_db)
 ):
     """Обновить товар"""
@@ -160,6 +167,9 @@ async def update_product(
     product.category_id = category_id
     product.restaurant_id = restaurant_id
     product.size = size
+    product.stock = stock
+    product.is_available = is_available
+    product.discount_price = discount_price
 
     await db.commit()
 
