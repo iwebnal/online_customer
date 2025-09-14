@@ -666,10 +666,22 @@
     var chips = document.querySelectorAll('.brand-menu .chip');
     if (chips && chips.forEach) {
       chips.forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          var slug = btn.dataset.category;
-          if (slug === 'all') { setActiveCategory(null); return; }
-          if (state.activeCategory === slug) setActiveCategory(null); else setActiveCategory(slug);
+        // Удаляем существующие обработчики, чтобы избежать дублирования
+        var newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+        
+        // Добавляем новый обработчик
+        newBtn.addEventListener('click', function () {
+          var slug = newBtn.dataset.category;
+          if (slug === 'all') { 
+            setActiveCategory(null); 
+            return; 
+          }
+          if (state.activeCategory === slug) {
+            setActiveCategory(null); 
+          } else {
+            setActiveCategory(slug);
+          }
         });
       });
     }
@@ -684,8 +696,8 @@
       if (menuSection && menuSection.scrollIntoView) menuSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
     
-    // Настраиваем обработчики категорий
-    setupCategoryHandlers();
+    // НЕ настраиваем обработчики категорий здесь - они будут настроены после загрузки данных
+    // setupCategoryHandlers(); // Убираем этот вызов
     
     if (tg && tg.MainButton && tg.MainButton.onClick) tg.MainButton.onClick(sendOrder);
     var toggleBtn = document.getElementById('toggle-addresses');
@@ -732,10 +744,10 @@
       state.categories = results[1] || [];
       
       renderCafeInfo(); // Обновляем информацию о кафе после загрузки ресторанов
-      renderCategories(); // Отображаем категории
+      renderCategories(); // Отображаем категории (внутри уже вызывается setupCategoryHandlers)
       renderMenu();
-      setupUI();
-      setActiveCategory(null);
+      setupUI(); // Настраиваем остальные обработчики
+      setActiveCategory(null); // Устанавливаем активную категорию "Все"
       updateOrderPanel();
       updateCartSummary();
       updateThemeIndicator();
