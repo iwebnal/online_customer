@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import joinedload
 
-from admin_service.admin.routes import products, orders, discounts, restaurants
+from admin_service.admin.routes import products, orders, discounts, restaurants, categories
 from admin_service.admin.auth import login_user, logout_user, is_authenticated, require_auth
 import sys
 import os
@@ -52,6 +52,7 @@ app.include_router(products.router, prefix="/admin", tags=["products"])
 app.include_router(orders.router, prefix="/admin", tags=["orders"])
 app.include_router(discounts.router, prefix="/admin", tags=["discounts"])
 app.include_router(restaurants.router, prefix="/admin", tags=["restaurants"])
+app.include_router(categories.router, prefix="/admin", tags=["categories"])
 
 
 @app.get("/", response_class=HTMLResponse)

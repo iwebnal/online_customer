@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}{% if category %}Редактировать категорию{% else %}Создать категорию{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="header">
+        <h1>{% if category %}Редактировать категорию{% else %}Создать категорию{% endif %}</h1>
+        <a href="/admin/categories" class="btn btn-secondary">Назад к списку</a>
+    </div>
+
+    <div class="form-container">
+        <form method="post" action="{% if category %}/admin/categories/{{ category.id }}{% else %}/admin/categories{% endif %}">
+            <div class="form-group">
+                <label for="name">Название категории *</label>
+                <input type="text" id="name" name="name" class="form-control" 
+                       value="{% if category %}{{ category.name }}{% endif %}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="restaurant_id">Ресторан *</label>
+                <select id="restaurant_id" name="restaurant_id" class="form-control" required>
+                    <option value="">Выберите ресторан</option>
+                    {% for restaurant in restaurants %}
+                    <option value="{{ restaurant.id }}" 
+                            {% if (category and category.restaurant_id == restaurant.id) or (selected_restaurant_id == restaurant.id) %}selected{% endif %}>
+                        {{ restaurant.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    {% if category %}Обновить{% else %}Создать{% endif %}
+                </button>
+                <a href="/admin/categories" class="btn btn-secondary">Отмена</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -96,6 +96,7 @@
       selectedAddressIndex: 0
     },
     menu: [],
+    categories: [],
     cart: new Map(),
     activeCategory: null
   };
@@ -175,6 +176,39 @@
     renderMenu();
     updateOrderPanel();
     updateCartSummary();
+  }
+
+  function renderCategories() {
+    var categoryList = document.getElementById('category-list');
+    if (!categoryList) return;
+    
+    // Очищаем список, оставляя только кнопку "Все"
+    var allButton = categoryList.querySelector('[data-category="all"]');
+    categoryList.innerHTML = '';
+    if (allButton) {
+      var allItem = document.createElement('li');
+      allItem.className = 'brand-menu__item';
+      allItem.appendChild(allButton);
+      categoryList.appendChild(allItem);
+    }
+    
+    // Добавляем категории из API
+    state.categories.forEach(function (category) {
+      var li = document.createElement('li');
+      li.className = 'brand-menu__item';
+      
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'chip';
+      button.setAttribute('data-category', category.slug);
+      button.textContent = category.name;
+      
+      li.appendChild(button);
+      categoryList.appendChild(li);
+    });
+    
+    // Обновляем обработчики событий
+    setupCategoryHandlers();
   }
 
   function renderMenu() {
@@ -477,6 +511,35 @@
       });
   }
 
+  function loadCategories() {
+    var apiUrl = 'http://localhost:8000/api/categories';
+    
+    return requestCompat(apiUrl, { cache: 'no-store' })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data.categories && Array.isArray(data.categories)) {
+          return data.categories.map(function(category) {
+            return {
+              id: category.id,
+              name: category.name,
+              slug: category.name.toLowerCase().replace(/\s+/g, '_'),
+              restaurant_id: category.restaurant_id
+            };
+          });
+        }
+        return [];
+      })
+      .catch(function (error) {
+        console.warn('Ошибка загрузки категорий:', error);
+        // Fallback категории
+        return [
+          { id: 1, name: 'Напитки', slug: 'drinks', restaurant_id: 1 },
+          { id: 2, name: 'Выпечка', slug: 'desserts', restaurant_id: 1 },
+          { id: 3, name: 'Десерты', slug: 'desserts', restaurant_id: 1 }
+        ];
+      });
+  }
+
   function loadMenu() {
     // Сначала пробуем загрузить из API админ-панели
     var apiUrl = 'http://localhost:8000/api/products'; // URL админ-панели
@@ -541,14 +604,7 @@
     if (menuSection && menuSection.scrollIntoView) menuSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  function setupUI() {
-    var confirmBtn = document.getElementById('confirm-order');
-    if (confirmBtn) confirmBtn.addEventListener('click', sendOrder);
-    var contBtn = document.getElementById('continue');
-    if (contBtn) contBtn.addEventListener('click', function () {
-      var menuSection = document.querySelector('.menu');
-      if (menuSection && menuSection.scrollIntoView) menuSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
+  function setupCategoryHandlers() {
     var chips = document.querySelectorAll('.brand-menu .chip');
     if (chips && chips.forEach) {
       chips.forEach(function (btn) {
@@ -559,6 +615,20 @@
         });
       });
     }
+  }
+
+  function setupUI() {
+    var confirmBtn = document.getElementById('confirm-order');
+    if (confirmBtn) confirmBtn.addEventListener('click', sendOrder);
+    var contBtn = document.getElementById('continue');
+    if (contBtn) contBtn.addEventListener('click', function () {
+      var menuSection = document.querySelector('.menu');
+      if (menuSection && menuSection.scrollIntoView) menuSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    
+    // Настраиваем обработчики категорий
+    setupCategoryHandlers();
+    
     if (tg && tg.MainButton && tg.MainButton.onClick) tg.MainButton.onClick(sendOrder);
     var toggleBtn = document.getElementById('toggle-addresses');
     if (toggleBtn) toggleBtn.addEventListener('click', toggleAddresses);
@@ -594,12 +664,17 @@
     }
     renderCafeInfo();
     
-    // Загружаем данные о ресторанах и меню параллельно
+    // Загружаем данные о ресторанах, категориях и меню параллельно
     Promise.all([
       loadRestaurants(),
+      loadCategories(),
       loadMenu()
-    ]).then(function () {
+    ]).then(function (results) {
+      // results[0] - restaurants, results[1] - categories, results[2] - menu
+      state.categories = results[1] || [];
+      
       renderCafeInfo(); // Обновляем информацию о кафе после загрузки ресторанов
+      renderCategories(); // Отображаем категории
       renderMenu();
       setupUI();
       setActiveCategory(null);
