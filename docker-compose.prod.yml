@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  # Nginx reverse proxy с SSL
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - ./public:/usr/share/nginx/html:ro
+    depends_on:
+      - admin
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  # Админ-панель API
+  admin:
+    build:
+      context: .
+      dockerfile: admin_service/docker/Dockerfile
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:${DB_PASSWORD}@db:5432/online_customer
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - SECRET_KEY=${SECRET_KEY}
+      - ENVIRONMENT=production
+    depends_on:
+      - db
+    restart: unless-stopped
+    networks:
+      - app-network
+    volumes:
+      - ./admin_service/admin/static:/app/admin/static:ro
+      - ./admin_service/admin/templates:/app/admin/templates:ro
+
+  # База данных PostgreSQL
+  db:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=online_customer
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  # Certbot для автоматического получения SSL сертификатов
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./ssl:/etc/letsencrypt
+      - ./nginx/webroot:/var/www/certbot
+    command: certonly --webroot --webroot-path=/var/www/certbot --email ${SSL_EMAIL} --agree-tos --no-eff-email -d ${DOMAIN_NAME}
+    depends_on:
+      - nginx
+
+volumes:
+  postgres_data:
+
+networks:
+  app-network:
+    driver: bridge

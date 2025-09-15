@@ -450,7 +450,7 @@
     console.log('Отправляем заказ:', orderData);
     
     // Отправляем POST-запрос на API админ-панели
-    var apiUrl = 'http://localhost:8000/api/orders';
+    var apiUrl = 'https://45.141.76.16/api/orders';
     
     requestCompat(apiUrl, {
       method: 'POST',
@@ -542,7 +542,7 @@
   }
 
   function loadRestaurants() {
-    var apiUrl = 'http://localhost:8000/api/restaurants';
+    var apiUrl = 'https://45.141.76.16/api/restaurants';
     
     return requestCompat(apiUrl, { cache: 'no-store' })
       .then(function (res) { return res.json(); })
@@ -570,7 +570,7 @@
   }
 
   function loadCategories() {
-    var apiUrl = 'http://localhost:8000/api/categories';
+    var apiUrl = 'https://45.141.76.16/api/categories';
     
     return requestCompat(apiUrl, { cache: 'no-store' })
       .then(function (res) { return res.json(); })
@@ -600,7 +600,7 @@
 
   function loadMenu() {
     // Сначала пробуем загрузить из API админ-панели
-    var apiUrl = 'http://localhost:8000/api/products'; // URL админ-панели
+    var apiUrl = 'https://45.141.76.16/api/products'; // URL админ-панели
     
     return firstSuccessfulFetch([apiUrl, './menu.json', '/menu.json'], { cache: 'no-store' })
       .then(function (res) { return res.json(); })
