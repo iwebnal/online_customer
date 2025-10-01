@@ -16,6 +16,7 @@ from admin_service.admin.routes import products, orders, discounts, restaurants,
 from admin_service.admin.auth import login_user, logout_user, is_authenticated, require_auth
 import sys
 import os
+
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from shared.database import get_db
 from shared.models import Order, User, Restaurant, Product, Discount
@@ -60,7 +61,7 @@ async def admin_panel(request: Request, db: AsyncSession = Depends(get_db)):
     # Проверяем авторизацию
     if not is_authenticated(request):
         return RedirectResponse(url="/admin/login", status_code=302)
-    
+
     # Получаем последние 3 заказа
     stmt = select(Order).options(
         joinedload(Order.user),
@@ -68,23 +69,23 @@ async def admin_panel(request: Request, db: AsyncSession = Depends(get_db)):
     ).order_by(Order.created_at.desc()).limit(3)
     result = await db.execute(stmt)
     recent_orders = result.scalars().unique().all()
-    
+
     # Получаем статистику
     restaurants_result = await db.execute(select(func.count(Restaurant.id)))
     restaurants_count = restaurants_result.scalar()
-    
+
     products_result = await db.execute(select(func.count(Product.id)))
     products_count = products_result.scalar()
-    
+
     orders_result = await db.execute(select(func.count(Order.id)))
     orders_count = orders_result.scalar()
-    
+
     discounts_result = await db.execute(select(func.count(Discount.id)))
     discounts_count = discounts_result.scalar()
-    
+
     users_result = await db.execute(select(func.count(User.id)))
     users_count = users_result.scalar()
-    
+
     return templates.TemplateResponse("index.html", {
         "request": request,
         "recent_orders": recent_orders,
@@ -103,7 +104,7 @@ async def login_page(request: Request):
     # Если уже авторизован, перенаправляем на главную
     if is_authenticated(request):
         return RedirectResponse(url="/home", status_code=302)
-    
+
     return templates.TemplateResponse("login.html", {"request": request})
 
 
@@ -131,7 +132,7 @@ async def get_restaurants_api(db: AsyncSession = Depends(get_db)):
     stmt = select(Restaurant).order_by(Restaurant.name)
     result = await db.execute(stmt)
     restaurants = result.scalars().all()
-    
+
     return {
         "restaurants": [
             {
@@ -152,7 +153,7 @@ async def get_products_api(db: AsyncSession = Depends(get_db)):
     )
     result = await db.execute(stmt)
     products = result.scalars().unique().all()
-    
+
     return {
         "products": [
             {
@@ -182,7 +183,7 @@ async def get_categories_api(db: AsyncSession = Depends(get_db)):
     stmt = select(Category)
     result = await db.execute(stmt)
     categories = result.scalars().all()
-    
+
     return {
         "categories": [
             {
@@ -205,7 +206,7 @@ async def create_order_api(order_data: dict, db: AsyncSession = Depends(get_db))
             stmt = select(User).where(User.telegram_id == str(user_data.get("id")))
             result = await db.execute(stmt)
             user = result.scalar_one_or_none()
-            
+
             if not user:
                 user = User(
                     telegram_id=str(user_data.get("id")),
@@ -214,26 +215,26 @@ async def create_order_api(order_data: dict, db: AsyncSession = Depends(get_db))
                 )
                 db.add(user)
                 await db.flush()
-        
+
         # Получаем ресторан по переданному ID или первый доступный
         restaurant = None
         if order_data.get("restaurant_id"):
             stmt = select(Restaurant).where(Restaurant.id == order_data["restaurant_id"])
             result = await db.execute(stmt)
             restaurant = result.scalar_one_or_none()
-        
+
         # Если ресторан не найден по ID, берем первый доступный
         if not restaurant:
             stmt = select(Restaurant).order_by(Restaurant.id)
             result = await db.execute(stmt)
             restaurant = result.scalars().first()
-        
+
         if not restaurant:
             return {
                 "status": "error",
                 "message": "Нет доступных ресторанов в системе"
             }
-        
+
         # Создаем заказ
         order = Order(
             user_id=user.id if user else None,
@@ -244,7 +245,7 @@ async def create_order_api(order_data: dict, db: AsyncSession = Depends(get_db))
         )
         db.add(order)
         await db.flush()
-        
+
         # Создаем элементы заказа
         for item in order_data.get("order", []):
             from shared.models import OrderItem
@@ -255,21 +256,44 @@ async def create_order_api(order_data: dict, db: AsyncSession = Depends(get_db))
                 price=item.get("price", 0)
             )
             db.add(order_item)
-        
+
         await db.commit()
-        
+
         return {
             "status": "success",
             "message": "Заказ успешно создан",
             "order_id": order.id
         }
-        
+
     except Exception as e:
         await db.rollback()
         return {
             "status": "error",
             "message": f"Ошибка создания заказа: {str(e)}"
         }
+
+
+@app.get("/products/{product_id}")
+async def get_product(product_id: int, db: AsyncSession = Depends(get_db)):
+    """Получить товар по ID"""
+    result = await db.execute(select(Product).where(Product.id == product_id))
+    product = result.scalar_one_or_none()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return product
+
+
+@app.get("/api/orders")
+async def get_orders(db: AsyncSession = Depends(get_db)):
+    """Получить список всех заказов"""
+    stmt = select(Order).options(
+        joinedload(Order.user),
+        joinedload(Order.restaurant)
+    ).order_by(Order.created_at.desc())
+    result = await db.execute(stmt)
+    orders = result.scalars().unique().all()
+    return orders
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host=settings.HOST, port=settings.ADMIN_PORT)

@@ -20,16 +20,16 @@ templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 
 # API роуты
-@router.get("/api/orders")
-async def get_orders(db: AsyncSession = Depends(get_db)):
-    """Получить список всех заказов"""
-    stmt = select(Order).options(
-        joinedload(Order.user),
-        joinedload(Order.restaurant)
-    ).order_by(Order.created_at.desc())
-    result = await db.execute(stmt)
-    orders = result.scalars().unique().all()
-    return orders
+# @router.get("/api/orders")
+# async def get_orders(db: AsyncSession = Depends(get_db)):
+#     """Получить список всех заказов"""
+#     stmt = select(Order).options(
+#         joinedload(Order.user),
+#         joinedload(Order.restaurant)
+#     ).order_by(Order.created_at.desc())
+#     result = await db.execute(stmt)
+#     orders = result.scalars().unique().all()
+#     return orders
 
 
 @router.get("/api/recent-orders")

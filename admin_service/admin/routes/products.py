@@ -87,23 +87,23 @@ async def edit_product_page(request: Request, product_id: int, db: AsyncSession 
 
 
 # API роуты
-@router.get("/api/products")
-async def get_products(db: AsyncSession = Depends(get_db)):
-    """Получить список всех товаров"""
-    stmt = select(Product).options(joinedload(Product.category))
-    result = await db.execute(stmt)
-    products = result.scalars().unique().all()
-    return {"products": [{"id": p.id, "name": p.name, "price": p.price, "category": p.category.name} for p in products]}
+# @router.get("/api/products")
+# async def get_products(db: AsyncSession = Depends(get_db)):
+#     """Получить список всех товаров"""
+#     stmt = select(Product).options(joinedload(Product.category))
+#     result = await db.execute(stmt)
+#     products = result.scalars().unique().all()
+#     return {"products": [{"id": p.id, "name": p.name, "price": p.price, "category": p.category.name} for p in products]}
 
 
-@router.get("/products/{product_id}")
-async def get_product(product_id: int, db: AsyncSession = Depends(get_db)):
-    """Получить товар по ID"""
-    result = await db.execute(select(Product).where(Product.id == product_id))
-    product = result.scalar_one_or_none()
-    if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
-    return product
+# @router.get("/products/{product_id}")
+# async def get_product(product_id: int, db: AsyncSession = Depends(get_db)):
+#     """Получить товар по ID"""
+#     result = await db.execute(select(Product).where(Product.id == product_id))
+#     product = result.scalar_one_or_none()
+#     if not product:
+#         raise HTTPException(status_code=404, detail="Product not found")
+#     return product
 
 
 @router.post("/products")
