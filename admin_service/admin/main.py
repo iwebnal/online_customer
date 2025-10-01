@@ -55,7 +55,7 @@ app.include_router(restaurants.router, prefix="/admin", tags=["restaurants"])
 app.include_router(categories.router, prefix="/admin", tags=["categories"])
 
 
-@app.get("/", response_class=HTMLResponse)
+@app.get("/home", response_class=HTMLResponse)
 async def admin_panel(request: Request, db: AsyncSession = Depends(get_db)):
     # Проверяем авторизацию
     if not is_authenticated(request):
@@ -102,7 +102,7 @@ async def admin_panel(request: Request, db: AsyncSession = Depends(get_db)):
 async def login_page(request: Request):
     # Если уже авторизован, перенаправляем на главную
     if is_authenticated(request):
-        return RedirectResponse(url="/", status_code=302)
+        return RedirectResponse(url="/home", status_code=302)
     
     return templates.TemplateResponse("login.html", {"request": request})
 
@@ -110,7 +110,7 @@ async def login_page(request: Request):
 @app.post("/admin/login", response_class=HTMLResponse)
 async def login(request: Request, username: str = Form(...), password: str = Form(...)):
     if login_user(request, username, password):
-        return RedirectResponse(url="/", status_code=302)
+        return RedirectResponse(url="/home", status_code=302)
     else:
         return templates.TemplateResponse("login.html", {
             "request": request,
