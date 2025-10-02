@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Depends, HTTPException, status, Form
+from fastapi import FastAPI, Request, Depends, HTTPException, status, Form, BackgroundTasks
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -25,6 +25,7 @@ from shared.database import get_db
 from shared.models import Order, User, Restaurant, Product, Discount
 from shared.config import settings
 from shared.telegram.sender import send_order_to_telegram, get_telegram_sender
+import asyncio
 
 app = FastAPI(title="Online Customer Admin", version="1.0.0")
 
@@ -197,8 +198,22 @@ async def get_categories_api(db: AsyncSession = Depends(get_db)):
     }
 
 
+def send_telegram_notification_sync(telegram_data: dict):
+    """Синхронная обертка для отправки уведомления в Telegram"""
+    try:
+        # Создаем новый event loop для фоновой задачи
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(send_order_to_telegram(telegram_data))
+        finally:
+            loop.close()
+    except Exception as e:
+        print(f"Ошибка отправки уведомления в Telegram: {e}")
+
+
 @app.post("/api/orders")
-async def create_order_api(order_data: dict, db: AsyncSession = Depends(get_db)):
+async def create_order_api(order_data: dict, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
     """Создать новый заказ из Mini App"""
     try:
         # Создаем пользователя если его нет
@@ -274,9 +289,8 @@ async def create_order_api(order_data: dict, db: AsyncSession = Depends(get_db))
                 "restaurant_id": restaurant.id
             }
             
-            # Отправляем уведомление асинхронно (не блокируем ответ)
-            import asyncio
-            asyncio.create_task(send_order_to_telegram(telegram_data))
+            # Отправляем уведомление в фоновом режиме (не блокируем ответ)
+            background_tasks.add_task(send_telegram_notification_sync, telegram_data)
             
         except Exception as telegram_error:
             # Логируем ошибку, но не прерываем создание заказа
