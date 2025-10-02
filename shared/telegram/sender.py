@@ -13,6 +13,13 @@ except ImportError:
     Bot = None
     TelegramError = Exception
 
+# Загружаем переменные окружения из .env файла
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # dotenv не установлен, используем системные переменные
+
 logger = logging.getLogger(__name__)
 
 
