@@ -12,6 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import joinedload
 
+# ВАЖНО: Загружаем переменные окружения ПЕРЕД импортом Telegram модуля
+load_dotenv()
+
 from admin_service.admin.routes import products, orders, discounts, restaurants, categories
 from admin_service.admin.auth import login_user, logout_user, is_authenticated, require_auth
 import sys
@@ -22,8 +25,6 @@ from shared.database import get_db
 from shared.models import Order, User, Restaurant, Product, Discount
 from shared.config import settings
 from shared.telegram.sender import send_order_to_telegram, get_telegram_sender
-
-load_dotenv()
 
 app = FastAPI(title="Online Customer Admin", version="1.0.0")
 
