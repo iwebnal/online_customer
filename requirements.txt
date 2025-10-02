@@ -36,6 +36,7 @@ psutil>=5.9.0
 
 # Telegram Bot (если используется)
 aiogram>=2.25.0
+python-telegram-bot>=20.0
 
 # HTTP клиент
 aiohttp>=3.8.0

@@ -21,6 +21,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from shared.database import get_db
 from shared.models import Order, User, Restaurant, Product, Discount
 from shared.config import settings
+from shared.telegram.sender import send_order_to_telegram, get_telegram_sender
 
 load_dotenv()
 
@@ -259,6 +260,27 @@ async def create_order_api(order_data: dict, db: AsyncSession = Depends(get_db))
 
         await db.commit()
 
+        # Отправляем уведомление в Telegram
+        try:
+            # Подготавливаем данные для отправки в Telegram
+            telegram_data = {
+                "order_id": order.id,
+                "user": order_data.get("user"),
+                "address": order_data.get("address", "Не указан"),
+                "order": order_data.get("order", []),
+                "totalSum": order_data.get("totalSum", 0),
+                "timestamp": order_data.get("timestamp"),
+                "restaurant_id": restaurant.id
+            }
+            
+            # Отправляем уведомление асинхронно (не блокируем ответ)
+            import asyncio
+            asyncio.create_task(send_order_to_telegram(telegram_data))
+            
+        except Exception as telegram_error:
+            # Логируем ошибку, но не прерываем создание заказа
+            print(f"Ошибка отправки в Telegram: {telegram_error}")
+
         return {
             "status": "success",
             "message": "Заказ успешно создан",
@@ -270,6 +292,30 @@ async def create_order_api(order_data: dict, db: AsyncSession = Depends(get_db))
         return {
             "status": "error",
             "message": f"Ошибка создания заказа: {str(e)}"
+        }
+
+
+@app.post("/api/telegram/test")
+async def test_telegram():
+    """Тестирование отправки сообщения в Telegram"""
+    try:
+        sender = get_telegram_sender()
+        success = await sender.send_test_message()
+        
+        if success:
+            return {
+                "status": "success",
+                "message": "Тестовое сообщение отправлено в Telegram"
+            }
+        else:
+            return {
+                "status": "error",
+                "message": "Не удалось отправить тестовое сообщение"
+            }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Ошибка тестирования Telegram: {str(e)}"
         }
 
 
