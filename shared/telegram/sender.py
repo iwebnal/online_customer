@@ -13,10 +13,12 @@ except ImportError:
     Bot = None
     TelegramError = Exception
 
-# Загружаем переменные окружения из .env файла
+# Загружаем переменные окружения из .env файла (если он существует)
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    # Загружаем .env только если файл существует
+    if os.path.exists('.env'):
+        load_dotenv()
 except ImportError:
     pass  # dotenv не установлен, используем системные переменные
 
@@ -38,14 +40,23 @@ class TelegramSender:
         self.chat_id = chat_id or os.getenv('TELEGRAM_CHAT_ID', '-1003068821769')
         self.bot = None
         
+        # Диагностика для отладки
+        logger.info(f"TELEGRAM_BOT_TOKEN: {'установлен' if self.bot_token else 'НЕ установлен'}")
+        logger.info(f"TELEGRAM_CHAT_ID: {self.chat_id}")
+        logger.info(f"Telegram библиотека: {'доступна' if Bot else 'НЕ доступна'}")
+        
         if self.bot_token and Bot:
             try:
                 self.bot = Bot(token=self.bot_token)
+                logger.info("Telegram Bot инициализирован успешно")
             except Exception as e:
                 logger.error(f"Ошибка инициализации Telegram бота: {e}")
                 self.bot = None
         else:
-            logger.warning("Telegram Bot не инициализирован: отсутствует токен или библиотека")
+            if not self.bot_token:
+                logger.warning("Telegram Bot не инициализирован: отсутствует TELEGRAM_BOT_TOKEN")
+            if not Bot:
+                logger.warning("Telegram Bot не инициализирован: библиотека python-telegram-bot не установлена")
     
     async def send_order_notification(self, order_data: Dict[str, Any]) -> bool:
         """

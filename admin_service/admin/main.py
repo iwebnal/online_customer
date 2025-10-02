@@ -13,7 +13,9 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import joinedload
 
 # ВАЖНО: Загружаем переменные окружения ПЕРЕД импортом Telegram модуля
-load_dotenv()
+# Загружаем .env только если файл существует (для Docker контейнеров)
+if os.path.exists('.env'):
+    load_dotenv()
 
 from admin_service.admin.routes import products, orders, discounts, restaurants, categories
 from admin_service.admin.auth import login_user, logout_user, is_authenticated, require_auth
