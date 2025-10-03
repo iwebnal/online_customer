@@ -450,8 +450,10 @@
     console.log('Отправляем заказ:', orderData);
     
     // Отправляем POST-запрос на API админ-панели
-//    var apiUrl = 'https://45.141.76.16/api/orders';
+    // Для Прода
     var apiUrl = 'https://onlinecustomer.ru/api/orders';
+    // Для Теста
+    //    var apiUrl = 'http://localhost:8000/api/orders';
 
     requestCompat(apiUrl, {
       method: 'POST',
@@ -543,8 +545,10 @@
   }
 
   function loadRestaurants() {
-//    var apiUrl = 'https://45.141.76.16/api/restaurants';
-    var apiUrl = 'https://onlinecustomer.ru/api/restaurants';
+    // Для Прода
+        var apiUrl = 'https://onlinecustomer.ru/api/restaurants';
+    // Для Теста
+//    var apiUrl = 'http://localhost:8000/api/restaurants';
 
     return requestCompat(apiUrl, { cache: 'no-store' })
       .then(function (res) { return res.json(); })
@@ -572,8 +576,10 @@
   }
 
   function loadCategories() {
-//    var apiUrl = 'https://45.141.76.16/api/categories';
+// Для Прода
     var apiUrl = 'https://onlinecustomer.ru/api/categories';
+    // Для Теста
+//    var apiUrl = 'http://localhost:8000/api/categories';
 
     return requestCompat(apiUrl, { cache: 'no-store' })
       .then(function (res) { return res.json(); })
@@ -603,8 +609,10 @@
 
   function loadMenu() {
     // Сначала пробуем загрузить из API админ-панели
-//    var apiUrl = 'https://45.141.76.16/api/products'; // URL админ-панели
-    var apiUrl = 'https://onlinecustomer.ru/api/products'; // URL админ-панели
+// Для Прода
+    var apiUrl = 'https://onlinecustomer.ru/api/products';
+    // Для Теста
+//    var apiUrl = 'http://localhost:8000/api/products';
 
     return firstSuccessfulFetch([apiUrl, './menu.json', '/menu.json'], { cache: 'no-store' })
       .then(function (res) { return res.json(); })
