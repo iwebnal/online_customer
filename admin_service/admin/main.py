@@ -231,9 +231,6 @@ def send_telegram_notification_sync(telegram_data: dict):
 @app.post("/api/orders")
 async def create_order_api(order_data: dict, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
     """Создать новый заказ из Mini App"""
-
-    sender = get_telegram_sender()
-
     try:
         # Создаем пользователя если его нет
         user = None
@@ -310,6 +307,7 @@ async def create_order_api(order_data: dict, background_tasks: BackgroundTasks, 
             
             # Отправляем уведомление в фоновом режиме (не блокируем ответ)
             # background_tasks.add_task(send_telegram_notification_sync, telegram_data)
+            sender = get_telegram_sender()
             order_success = await sender.send_order_notification(telegram_data)
 
         except Exception as telegram_error:
