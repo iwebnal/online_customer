@@ -12,7 +12,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import joinedload
 
-from shared.telegram import sender
 
 # ВАЖНО: Загружаем переменные окружения ПЕРЕД импортом Telegram модуля
 # Загружаем .env только если файл существует (для Docker контейнеров)
@@ -232,6 +231,9 @@ def send_telegram_notification_sync(telegram_data: dict):
 @app.post("/api/orders")
 async def create_order_api(order_data: dict, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
     """Создать новый заказ из Mini App"""
+
+    sender = get_telegram_sender()
+
     try:
         # Создаем пользователя если его нет
         user = None
