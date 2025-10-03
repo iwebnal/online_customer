@@ -229,35 +229,6 @@ def send_telegram_notification_sync(telegram_data: dict):
         return False
 
 
-async def send_telegram(test_order):
-    """Тестирует отправку сообщений в Telegram"""
-    print("🤖 Тестирование Telegram интеграции...")
-
-    # Проверяем наличие токена
-    bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
-    chat_id = os.getenv('TELEGRAM_CHAT_ID', '-1003068821769')
-
-    if not bot_token:
-        print("❌ Ошибка: TELEGRAM_BOT_TOKEN не установлен в переменных окружения")
-        print("   Добавьте TELEGRAM_BOT_TOKEN=your-bot-token в файл .env")
-        return False
-
-    print(f"📱 Chat ID: {chat_id}")
-    print(f"🔑 Bot Token: {bot_token[:10]}...")
-
-    # Получаем отправителя
-    sender = get_telegram_sender()
-
-    print("📤 Отправляем тестовое уведомление о заказе...")
-
-    order_success = await sender.send_order_notification(test_order)
-
-    if order_success:
-        print("✅ Уведомление о заказе отправлено успешно!")
-        return True
-    else:
-        print("❌ Ошибка отправки уведомления о заказе")
-        return False
 
 
 @app.post("/api/orders")
@@ -326,23 +297,43 @@ async def create_order_api(order_data: dict, background_tasks: BackgroundTasks, 
 
         # Отправляем уведомление в Telegram
         try:
+            # Получаем полную информацию о товарах из базы данных
+            order_items_with_products = []
+            for item in order_data.get("order", []):
+                # Получаем информацию о товаре из базы данных
+                product_stmt = select(Product).where(Product.id == item.get("id"))
+                product_result = await db.execute(product_stmt)
+                product = product_result.scalar_one_or_none()
+                
+                if product:
+                    order_items_with_products.append({
+                        "id": product.id,
+                        "name": product.name,
+                        "qty": item.get("qty", 1),
+                        "price": item.get("price", 0)
+                    })
+                else:
+                    # Если товар не найден, используем данные из заказа
+                    order_items_with_products.append({
+                        "id": item.get("id"),
+                        "name": item.get("name", "Неизвестный товар"),
+                        "qty": item.get("qty", 1),
+                        "price": item.get("price", 0)
+                    })
+
             # Подготавливаем данные для отправки в Telegram
             telegram_data = {
                 "order_id": order.id,
                 "user": order_data.get("user"),
                 "address": order_data.get("address", "Не указан"),
-                "order": order_data.get("order", []),
+                "order": order_items_with_products,
                 "totalSum": order_data.get("totalSum", 0),
                 "timestamp": order_data.get("timestamp"),
                 "restaurant_id": restaurant.id
             }
 
             # Отправляем уведомление в фоновом режиме (не блокируем ответ)
-            # background_tasks.add_task(send_telegram_notification_sync, telegram_data)
-
-            # sender = get_telegram_sender()
-            await send_telegram(telegram_data)
-            # order_success = await sender.send_order_notification(telegram_data)
+            background_tasks.add_task(send_telegram_notification_sync, telegram_data)
 
         except Exception as telegram_error:
             # Логируем ошибку, но не прерываем создание заказа
