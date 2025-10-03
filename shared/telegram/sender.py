@@ -39,11 +39,16 @@ class TelegramSender:
         self.bot_token = bot_token or os.getenv('TELEGRAM_BOT_TOKEN')
         self.chat_id = chat_id or os.getenv('TELEGRAM_CHAT_ID', '-1003068821769')
         self.bot = None
+        self.initialization_error = None
         
-        # Диагностика для отладки
+        # Расширенная диагностика для отладки
         logger.info(f"TELEGRAM_BOT_TOKEN: {'установлен' if self.bot_token else 'НЕ установлен'}")
         logger.info(f"TELEGRAM_CHAT_ID: {self.chat_id}")
         logger.info(f"Telegram библиотека: {'доступна' if Bot else 'НЕ доступна'}")
+        
+        # Дополнительная информация для Docker окружения
+        if os.path.exists('/.dockerenv'):
+            logger.info("Запуск в Docker контейнере обнаружен")
         
         if self.bot_token and Bot:
             try:
@@ -51,12 +56,23 @@ class TelegramSender:
                 logger.info("Telegram Bot инициализирован успешно")
             except Exception as e:
                 logger.error(f"Ошибка инициализации Telegram бота: {e}")
+                self.initialization_error = str(e)
                 self.bot = None
         else:
             if not self.bot_token:
                 logger.warning("Telegram Bot не инициализирован: отсутствует TELEGRAM_BOT_TOKEN")
+                self.initialization_error = "Отсутствует TELEGRAM_BOT_TOKEN"
             if not Bot:
                 logger.warning("Telegram Bot не инициализирован: библиотека python-telegram-bot не установлена")
+                self.initialization_error = "Библиотека python-telegram-bot не установлена"
+    
+    def is_initialized(self) -> bool:
+        """Проверяет, инициализирован ли бот"""
+        return self.bot is not None
+    
+    def get_initialization_error(self) -> Optional[str]:
+        """Возвращает ошибку инициализации, если есть"""
+        return self.initialization_error
     
     async def send_order_notification(self, order_data: Dict[str, Any]) -> bool:
         """
@@ -69,28 +85,36 @@ class TelegramSender:
             bool: True если сообщение отправлено успешно, False в противном случае
         """
         if not self.bot:
-            logger.warning("Telegram Bot не инициализирован")
+            error_msg = self.get_initialization_error() or "Telegram Bot не инициализирован"
+            logger.warning(f"Telegram Bot не инициализирован: {error_msg}")
             return False
         
         try:
             # Формируем сообщение о заказе
             message = self._format_order_message(order_data)
+            logger.info(f"Отправляем сообщение в чат {self.chat_id} для заказа {order_data.get('order_id', 'unknown')}")
             
-            # Отправляем сообщение
-            await self.bot.send_message(
-                chat_id=self.chat_id,
-                text=message,
-                parse_mode='HTML'
+            # Отправляем сообщение с таймаутом
+            await asyncio.wait_for(
+                self.bot.send_message(
+                    chat_id=self.chat_id,
+                    text=message,
+                    parse_mode='HTML'
+                ),
+                timeout=30.0  # 30 секунд таймаут
             )
             
-            logger.info(f"Уведомление о заказе отправлено в Telegram: {order_data.get('order_id', 'unknown')}")
+            logger.info(f"✅ Уведомление о заказе отправлено в Telegram: {order_data.get('order_id', 'unknown')}")
             return True
             
+        except asyncio.TimeoutError:
+            logger.error(f"⏰ Таймаут при отправке сообщения в Telegram для заказа {order_data.get('order_id', 'unknown')}")
+            return False
         except TelegramError as e:
-            logger.error(f"Ошибка отправки сообщения в Telegram: {e}")
+            logger.error(f"❌ Ошибка отправки сообщения в Telegram: {e}")
             return False
         except Exception as e:
-            logger.error(f"Неожиданная ошибка при отправке в Telegram: {e}")
+            logger.error(f"💥 Неожиданная ошибка при отправке в Telegram: {e}")
             return False
     
     def _format_order_message(self, order_data: Dict[str, Any]) -> str:
@@ -167,19 +191,31 @@ class TelegramSender:
             bool: True если сообщение отправлено успешно
         """
         if not self.bot:
-            logger.warning("Telegram Bot не инициализирован")
+            error_msg = self.get_initialization_error() or "Telegram Bot не инициализирован"
+            logger.warning(f"Telegram Bot не инициализирован: {error_msg}")
             return False
         
         try:
-            await self.bot.send_message(
-                chat_id=self.chat_id,
-                text="🤖 <b>Тестовое сообщение</b>\n\nTelegram бот для уведомлений о заказах работает корректно!",
-                parse_mode='HTML'
+            test_message = "🤖 <b>Тестовое сообщение</b>\n\nTelegram бот для уведомлений о заказах работает корректно!\n\n🕐 Время: " + str(asyncio.get_event_loop().time())
+            
+            await asyncio.wait_for(
+                self.bot.send_message(
+                    chat_id=self.chat_id,
+                    text=test_message,
+                    parse_mode='HTML'
+                ),
+                timeout=30.0
             )
-            logger.info("Тестовое сообщение отправлено успешно")
+            logger.info("✅ Тестовое сообщение отправлено успешно")
             return True
+        except asyncio.TimeoutError:
+            logger.error("⏰ Таймаут при отправке тестового сообщения")
+            return False
+        except TelegramError as e:
+            logger.error(f"❌ Ошибка отправки тестового сообщения: {e}")
+            return False
         except Exception as e:
-            logger.error(f"Ошибка отправки тестового сообщения: {e}")
+            logger.error(f"💥 Неожиданная ошибка при отправке тестового сообщения: {e}")
             return False
 
 

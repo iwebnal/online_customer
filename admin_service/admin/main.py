@@ -202,16 +202,27 @@ async def get_categories_api(db: AsyncSession = Depends(get_db)):
 
 def send_telegram_notification_sync(telegram_data: dict):
     """Синхронная обертка для отправки уведомления в Telegram"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"🚀 Начинаем отправку уведомления в Telegram для заказа {telegram_data.get('order_id', 'unknown')}")
+    
     try:
         # Создаем новый event loop для фоновой задачи
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            loop.run_until_complete(send_order_to_telegram(telegram_data))
+            result = loop.run_until_complete(send_order_to_telegram(telegram_data))
+            if result:
+                logger.info(f"✅ Уведомление в Telegram отправлено успешно для заказа {telegram_data.get('order_id', 'unknown')}")
+            else:
+                logger.warning(f"⚠️ Не удалось отправить уведомление в Telegram для заказа {telegram_data.get('order_id', 'unknown')}")
+            return result
         finally:
             loop.close()
     except Exception as e:
-        print(f"Ошибка отправки уведомления в Telegram: {e}")
+        logger.error(f"💥 Критическая ошибка отправки уведомления в Telegram: {e}")
+        return False
 
 
 @app.post("/api/orders")
