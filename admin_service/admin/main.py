@@ -12,6 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import joinedload
 
+from shared.telegram import sender
+
 # ВАЖНО: Загружаем переменные окружения ПЕРЕД импортом Telegram модуля
 # Загружаем .env только если файл существует (для Docker контейнеров)
 if os.path.exists('.env'):
@@ -26,7 +28,9 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from shared.database import get_db
 from shared.models import Order, User, Restaurant, Product, Discount
 from shared.config import settings
+
 from shared.telegram.sender import send_order_to_telegram, get_telegram_sender
+
 import asyncio
 
 app = FastAPI(title="Online Customer Admin", version="1.0.0")
@@ -303,8 +307,9 @@ async def create_order_api(order_data: dict, background_tasks: BackgroundTasks, 
             }
             
             # Отправляем уведомление в фоновом режиме (не блокируем ответ)
-            background_tasks.add_task(send_telegram_notification_sync, telegram_data)
-            
+            # background_tasks.add_task(send_telegram_notification_sync, telegram_data)
+            order_success = await sender.send_order_notification(telegram_data)
+
         except Exception as telegram_error:
             # Логируем ошибку, но не прерываем создание заказа
             print(f"Ошибка отправки в Telegram: {telegram_error}")
