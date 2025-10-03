@@ -332,8 +332,17 @@ async def create_order_api(order_data: dict, background_tasks: BackgroundTasks, 
                 "restaurant_id": restaurant.id
             }
 
-            # Отправляем уведомление в фоновом режиме (не блокируем ответ)
-            background_tasks.add_task(send_telegram_notification_sync, telegram_data)
+            # Отправляем уведомление напрямую (как в test_telegram_fix.py)
+            sender = get_telegram_sender()
+            if sender.is_initialized():
+                order_success = await sender.send_order_notification(telegram_data)
+                if order_success:
+                    print(f"✅ Уведомление о заказе #{order.id} отправлено в Telegram")
+                else:
+                    print(f"⚠️ Не удалось отправить уведомление о заказе #{order.id} в Telegram")
+            else:
+                error = sender.get_initialization_error()
+                print(f"❌ Telegram Bot не инициализирован: {error}")
 
         except Exception as telegram_error:
             # Логируем ошибку, но не прерываем создание заказа
