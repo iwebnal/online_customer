@@ -12,7 +12,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import joinedload
 
-
 # ВАЖНО: Загружаем переменные окружения ПЕРЕД импортом Telegram модуля
 # Загружаем .env только если файл существует (для Docker контейнеров)
 if os.path.exists('.env'):
@@ -207,9 +206,9 @@ def send_telegram_notification_sync(telegram_data: dict):
     """Синхронная обертка для отправки уведомления в Telegram"""
     import logging
     logger = logging.getLogger(__name__)
-    
+
     logger.info(f"🚀 Начинаем отправку уведомления в Telegram для заказа {telegram_data.get('order_id', 'unknown')}")
-    
+
     try:
         # Создаем новый event loop для фоновой задачи
         loop = asyncio.new_event_loop()
@@ -217,14 +216,80 @@ def send_telegram_notification_sync(telegram_data: dict):
         try:
             result = loop.run_until_complete(send_order_to_telegram(telegram_data))
             if result:
-                logger.info(f"✅ Уведомление в Telegram отправлено успешно для заказа {telegram_data.get('order_id', 'unknown')}")
+                logger.info(
+                    f"✅ Уведомление в Telegram отправлено успешно для заказа {telegram_data.get('order_id', 'unknown')}")
             else:
-                logger.warning(f"⚠️ Не удалось отправить уведомление в Telegram для заказа {telegram_data.get('order_id', 'unknown')}")
+                logger.warning(
+                    f"⚠️ Не удалось отправить уведомление в Telegram для заказа {telegram_data.get('order_id', 'unknown')}")
             return result
         finally:
             loop.close()
     except Exception as e:
         logger.error(f"💥 Критическая ошибка отправки уведомления в Telegram: {e}")
+        return False
+
+
+async def send_telegram(test_order):
+    """Тестирует отправку сообщений в Telegram"""
+    print("🤖 Тестирование Telegram интеграции...")
+
+    # Проверяем наличие токена
+    bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
+    chat_id = os.getenv('TELEGRAM_CHAT_ID', '-1003068821769')
+
+    if not bot_token:
+        print("❌ Ошибка: TELEGRAM_BOT_TOKEN не установлен в переменных окружения")
+        print("   Добавьте TELEGRAM_BOT_TOKEN=your-bot-token в файл .env")
+        return False
+
+    print(f"📱 Chat ID: {chat_id}")
+    print(f"🔑 Bot Token: {bot_token[:10]}...")
+
+    # Получаем отправителя
+    sender = get_telegram_sender()
+
+    if not sender.bot:
+        print("❌ Ошибка: Telegram Bot не инициализирован")
+        return False
+
+    # Тестируем отправку тестового сообщения
+    print("📤 Отправляем тестовое сообщение...")
+    success = await sender.send_test_message()
+
+    if success:
+        print("✅ Тестовое сообщение отправлено успешно!")
+
+        # Тестируем отправку уведомления о заказе
+        print("📤 Отправляем тестовое уведомление о заказе...")
+
+        # test_order = {
+        #     "order_id": 999,
+        #     "user": {
+        #         "id": 123456789,
+        #         "first_name": "Тест",
+        #         "last_name": "Пользователь",
+        #         "username": "test_user"
+        #     },
+        #     "address": "г. Тестовый, ул. Тестовая, 1",
+        #     "order": [
+        #         {"name": "Американо", "qty": 2, "price": 150},
+        #         {"name": "Круассан", "qty": 1, "price": 180}
+        #     ],
+        #     "totalSum": 480,
+        #     "timestamp": "2024-01-15T12:00:00Z",
+        #     "restaurant_id": 1
+        # }
+
+        order_success = await sender.send_order_notification(test_order)
+
+        if order_success:
+            print("✅ Уведомление о заказе отправлено успешно!")
+            return True
+        else:
+            print("❌ Ошибка отправки уведомления о заказе")
+            return False
+    else:
+        print("❌ Ошибка отправки тестового сообщения")
         return False
 
 
@@ -304,11 +369,13 @@ async def create_order_api(order_data: dict, background_tasks: BackgroundTasks, 
                 "timestamp": order_data.get("timestamp"),
                 "restaurant_id": restaurant.id
             }
-            
+
             # Отправляем уведомление в фоновом режиме (не блокируем ответ)
             # background_tasks.add_task(send_telegram_notification_sync, telegram_data)
-            sender = get_telegram_sender()
-            order_success = await sender.send_order_notification(telegram_data)
+
+            # sender = get_telegram_sender()
+            await send_telegram(telegram_data)
+            # order_success = await sender.send_order_notification(telegram_data)
 
         except Exception as telegram_error:
             # Логируем ошибку, но не прерываем создание заказа
@@ -334,7 +401,7 @@ async def test_telegram():
     try:
         sender = get_telegram_sender()
         success = await sender.send_test_message()
-        
+
         if success:
             return {
                 "status": "success",
